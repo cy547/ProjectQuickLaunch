@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import net from 'node:net'
 import type { PortOccupant, TaskPortInfo } from '../shared/types'
 
 interface ProcInfo {
@@ -190,5 +191,34 @@ export async function killProcessTree(pid: number): Promise<{ ok: boolean; messa
         : resolve({ ok: false, message: `结束进程失败（退出码 ${code}），可能需要管理员权限` })
     )
     killer.on('error', () => resolve({ ok: false, message: 'taskkill 执行失败' }))
+  })
+}
+
+export interface PortCheckResult {
+  port: number
+  /** 有进程处于 LISTENING 时为 true */
+  occupied: boolean
+  occupants: PortOccupantInfo[]
+}
+
+/** 检查端口是否已被监听（启动前预检用），返回占用进程明细 */
+export async function checkPortFree(port: number): Promise<PortCheckResult> {
+  const occupants = (await findPortOccupants(port)).filter((o) => o.state === 'LISTENING')
+  return { port, occupied: occupants.length > 0, occupants }
+}
+
+/** TCP 连通性检测（MySQL/Redis/MQ 等依赖服务用，1.5s 超时） */
+export function checkServiceTcp(host: string, port: number, timeoutMs = 1500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    const done = (ok: boolean): void => {
+      socket.destroy()
+      resolve(ok)
+    }
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => done(true))
+    socket.once('timeout', () => done(false))
+    socket.once('error', () => done(false))
+    socket.connect(port, host)
   })
 }

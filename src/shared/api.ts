@@ -63,6 +63,12 @@ export interface RendererApi {
   getPortSnapshot(): Promise<PortSnapshot>
   /** 结束占用端口的进程树 */
   killProcess(pid: number): Promise<OpResult>
+  /** 端口预检：是否被 LISTENING 进程占用 */
+  checkPort(port: number): Promise<{ port: number; occupied: boolean; occupants: Array<{ pid: number; processName: string; state: string; address: string; port: number; protocol: string }> }>
+  /** 依赖服务 TCP 连通性检测 */
+  checkService(host: string, port: number): Promise<boolean>
+  /** HTTP 就绪探测 */
+  checkUrl(url: string): Promise<boolean>
 
   onTaskStatus(cb: (p: TaskStatusPayload) => void): () => void
   onTaskOutput(cb: (p: TaskOutputPayload) => void): () => void

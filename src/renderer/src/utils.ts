@@ -69,4 +69,16 @@ export function repoNameFromUrl(url: string): string {
   return name.replace(/[^\w.-]+/g, '-') || 'repository'
 }
 
+/** 从访问地址解析端口（省略协议端口时按 80/443） */
+export function urlPort(url?: string): number | null {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    if (u.port) return Number(u.port)
+    return u.protocol === 'https:' ? 443 : 80
+  } catch {
+    return null
+  }
+}
+
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))

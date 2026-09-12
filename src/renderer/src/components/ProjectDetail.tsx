@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Empty, message, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
+import { Button, Card, Empty, message, Popconfirm, Space, Spin, Tag, Tooltip, Typography } from 'antd'
 import {
   ApartmentOutlined,
   CodeOutlined,
@@ -7,12 +7,22 @@ import {
   EditOutlined,
   FolderOpenOutlined,
   PauseCircleOutlined,
-  PlayCircleOutlined
+  PlayCircleOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { newId, sleep } from '../utils'
-import type { Project } from '../../../shared/types'
+import {
+  checkProjectServices,
+  confirmContinueUnready,
+  confirmServicesDown,
+  startTaskSmart,
+  waitReady
+} from '../startup'
+import type { Project, TaskConfig } from '../../../shared/types'
 import TaskCard from './TaskCard'
+
+const READY_TIMEOUT_MS = 60_000
 
 export default function ProjectDetail({ projectId }: { projectId: string }) {
   const project = useAppStore((s) => s.projects.find((p) => p.id === projectId))
@@ -29,12 +39,42 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     (t) => taskStates[`${project.id}:${t.id}`]?.status === 'running'
   )
 
+  const [starting, setStarting] = useState(false)
+  const [startHint, setStartHint] = useState<string | null>(null)
+
+  /** 一键启动：依赖服务预检 → 顺序启动（含端口预检）→ 就绪门禁 */
   const startAll = async (): Promise<void> => {
-    for (const task of project.tasks) {
-      const r = await window.api.taskStart(project.id, task.id)
-      if (!r.ok && r.message) message.warning(`「${task.name}」${r.message}`)
-      await sleep(400)
+    if (starting) return
+    setStarting(true)
+    try {
+      const down = await checkProjectServices(project)
+      if (down.length > 0 && !(await confirmServicesDown(down))) return
+
+      for (const task of project.tasks) {
+        setStartHint(`正在启动「${task.name}」…`)
+        const r = await startTaskSmart(project, task)
+        if (r === 'cancelled') return
+        if (task.url) {
+          setStartHint(`等待「${task.name}」就绪…`)
+          const ready = await waitReady(task.url, READY_TIMEOUT_MS, (s) =>
+            setStartHint(`等待「${task.name}」就绪… ${s}s`)
+          )
+          if (!ready) {
+            setStartHint(null)
+            if (!(await confirmContinueUnready(task.name, READY_TIMEOUT_MS / 1000))) return
+          }
+        }
+      }
+    } finally {
+      setStarting(false)
+      setStartHint(null)
     }
+  }
+
+  /** 启动快捷命令（一次性任务），并自动打开它的日志面板 */
+  const runQuickCommand = async (taskId: string): Promise<void> => {
+    const r = await startTaskSmart(project, { id: taskId } as unknown as TaskConfig)
+    if (r === 'started') setLogKey(`${project.id}:${taskId}`)
   }
 
   const stopAll = async (): Promise<void> => {
@@ -96,6 +136,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
+                loading={starting}
                 disabled={project.tasks.length === 0}
                 onClick={() => void startAll()}
               >
@@ -129,6 +170,14 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             </Tag>
           )}
         </div>
+        {starting && startHint && (
+          <div style={{ marginTop: 8 }}>
+            <Space size={8}>
+              <Spin size="small" />
+              <Typography.Text type="secondary">{startHint}</Typography.Text>
+            </Space>
+          </div>
+        )}
 
         {/* 任务列表 */}
         {project.tasks.length === 0 ? (
@@ -158,6 +207,32 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               />
             )
           })
+        )}
+
+        {/* 快捷命令 */}
+        {(project.quickCommands?.length ?? 0) > 0 && (
+          <Card size="small">
+            <Space wrap size={8}>
+              <Typography.Text type="secondary">
+                <ThunderboltOutlined /> 快捷命令：
+              </Typography.Text>
+              {project.quickCommands!.map((qc) => {
+                const qcKey = `${project.id}:${qc.id}`
+                const running = taskStates[qcKey]?.status === 'running'
+                return (
+                  <Button
+                    key={qc.id}
+                    size="small"
+                    icon={<ThunderboltOutlined />}
+                    loading={running}
+                    onClick={() => void runQuickCommand(qc.id)}
+                  >
+                    {qc.name}
+                  </Button>
+                )
+              })}
+            </Space>
+          </Card>
         )}
       </Space>
     </div>

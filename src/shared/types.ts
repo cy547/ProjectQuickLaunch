@@ -16,7 +16,19 @@ export interface Project {
   name: string
   path: string
   tasks: TaskConfig[]
+  /** 快捷命令（一次性任务：npm install、git pull 等，执行完即结束） */
+  quickCommands?: TaskConfig[]
+  /** 依赖服务（一键启动前预检连通性，如 MySQL 3306 / Redis 6379） */
+  services?: ServiceDep[]
   createdAt: number
+}
+
+/** 项目依赖的中间件服务 */
+export interface ServiceDep {
+  id: string
+  name: string
+  host: string
+  port: number
 }
 
 /** 应用设置 */
@@ -158,6 +170,9 @@ export const IPC = {
   GetSystemProxy: 'net:get-system-proxy',
   GetPortSnapshot: 'net:get-port-snapshot',
   KillProcess: 'net:kill-process',
+  CheckPort: 'net:check-port',
+  CheckService: 'net:check-service',
+  CheckUrl: 'net:check-url',
   TaskStart: 'task:start',
   TaskStop: 'task:stop',
   TaskLogs: 'task:logs',

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button, Card, message, Select, Space, Tag, Typography } from 'antd'
 import { CaretRightOutlined, FileTextOutlined, PauseOutlined } from '@ant-design/icons'
 import { useAppStore } from '../store'
+import { startTaskSmart } from '../startup'
 import type { TaskRunStatus, UrlHealth } from '../../../shared/types'
 import LogPanel from './LogPanel'
 
@@ -62,8 +63,8 @@ export default function TaskCard({ projectId, taskId, logOpen, onToggleLog }: Pr
   const key = `${projectId}:${taskId}`
 
   const start = async (): Promise<void> => {
-    const r = await window.api.taskStart(projectId, taskId)
-    if (!r.ok && r.message) message.warning(r.message)
+    // 智能启动：配置了访问地址的先做端口预检（被占用时可一键结束占用进程）
+    await startTaskSmart(project, task)
   }
 
   const stop = async (): Promise<void> => {

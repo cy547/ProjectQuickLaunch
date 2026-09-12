@@ -17,7 +17,8 @@ import { cloneManager } from './gitClone'
 import { scanSubProjects } from './scan'
 import { detectProject } from './detect'
 import { detectSystemProxy } from './proxy'
-import { collectPortSnapshot, killProcessTree } from './ports'
+import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree } from './ports'
+import { probeUrl } from './health'
 import {
   buildEnvForManaged,
   checkRuntimes,
@@ -203,6 +204,14 @@ export function registerIpc(win: BrowserWindow): void {
   })
 
   ipcMain.handle(IPC.KillProcess, (_e, pid: number) => killProcessTree(pid))
+
+  ipcMain.handle(IPC.CheckPort, (_e, port: number) => checkPortFree(Number(port)))
+
+  ipcMain.handle(IPC.CheckService, (_e, host: string, port: number) =>
+    checkServiceTcp(String(host), Number(port))
+  )
+
+  ipcMain.handle(IPC.CheckUrl, (_e, url: string) => probeUrl(String(url)))
 
   ipcMain.handle(IPC.CloneCancel, () => {
     cloneManager.cancel()

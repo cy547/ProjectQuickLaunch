@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Flex, Form, Input, message, Modal, Space, Typography } from 'antd'
+import { Button, Flex, Form, Input, InputNumber, message, Modal, Space, Typography } from 'antd'
 import { ApartmentOutlined, DeleteOutlined, FolderOpenOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { newId } from '../utils'
@@ -12,10 +12,24 @@ interface TaskFormValue {
   url?: string
 }
 
+interface QuickCommandFormValue {
+  name: string
+  command: string
+  cwd?: string
+}
+
+interface ServiceFormValue {
+  name: string
+  host: string
+  port?: number
+}
+
 interface FormValues {
   name: string
   path: string
   tasks: TaskFormValue[]
+  quickCommands: QuickCommandFormValue[]
+  services: ServiceFormValue[]
 }
 
 export default function ProjectEditModal() {
@@ -36,7 +50,10 @@ export default function ProjectEditModal() {
       tasks:
         p?.tasks.map((t) => ({ name: t.name, command: t.command, cwd: t.cwd, url: t.url })) ??
         editModal.presetTasks?.map((t) => ({ name: t.name, command: t.command, cwd: t.cwd, url: t.url })) ??
-        []
+        [],
+      quickCommands:
+        p?.quickCommands?.map((q) => ({ name: q.name, command: q.command, cwd: q.cwd })) ?? [],
+      services: p?.services?.map((s) => ({ name: s.name, host: s.host, port: s.port })) ?? []
     })
   }, [
     editModal.open,
@@ -150,7 +167,23 @@ export default function ProjectEditModal() {
           command: t.command.trim(),
           ...(t.cwd?.trim() ? { cwd: t.cwd.trim() } : {}),
           ...(t.url?.trim() ? { url: t.url.trim() } : {})
-        }))
+        })),
+        quickCommands: (values.quickCommands ?? [])
+          .filter((q) => q.name?.trim() && q.command?.trim())
+          .map((q, i) => ({
+            id: editing?.quickCommands?.[i]?.id ?? newId(),
+            name: q.name.trim(),
+            command: q.command.trim(),
+            ...(q.cwd?.trim() ? { cwd: q.cwd.trim() } : {})
+          })),
+        services: (values.services ?? [])
+          .filter((s) => s.name?.trim() && s.port)
+          .map((s, i) => ({
+            id: editing?.services?.[i]?.id ?? newId(),
+            name: s.name.trim(),
+            host: s.host?.trim() || '127.0.0.1',
+            port: Number(s.port)
+          }))
       }
       const projects = await window.api.saveProject(project)
       setProjects(projects)
@@ -277,6 +310,97 @@ export default function ProjectEditModal() {
                   前后端在不同子文件夹时，请为每个任务单独指定工作目录。
                 </Typography.Text>
               )}
+            </>
+          )}
+        </Form.List>
+
+        <Flex justify="space-between" align="center" style={{ margin: '16px 0 8px' }}>
+          <Typography.Text strong>快捷命令（一次性任务，如 npm install / git pull）</Typography.Text>
+          <Button
+            size="small"
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              const list: QuickCommandFormValue[] = form.getFieldValue('quickCommands') ?? []
+              form.setFieldValue('quickCommands', [...list, { name: '', command: '', cwd: '' }])
+            }}
+          >
+            添加快捷命令
+          </Button>
+        </Flex>
+        <Form.List name="quickCommands">
+          {(fields, { remove }) => (
+            <>
+              {fields.map((field) => (
+                <Flex gap={8} key={field.key} align="center" style={{ marginBottom: 8 }}>
+                  <Form.Item name={[field.name, 'name']} noStyle>
+                    <Input placeholder="名称（npm install）" style={{ width: 150 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'command']} noStyle>
+                    <Input placeholder="命令，如 git pull" style={{ flex: 1 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'cwd']} noStyle>
+                    <Input placeholder="工作目录（选填）" style={{ width: 220 }} />
+                  </Form.Item>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(field.name)}
+                  />
+                </Flex>
+              ))}
+            </>
+          )}
+        </Form.List>
+
+        <Flex justify="space-between" align="center" style={{ margin: '16px 0 8px' }}>
+          <Typography.Text strong>依赖服务（一键启动前预检连通性，如 MySQL/Redis/MQ）</Typography.Text>
+          <Button
+            size="small"
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              const list: ServiceFormValue[] = form.getFieldValue('services') ?? []
+              form.setFieldValue('services', [
+                ...list,
+                { name: '', host: '127.0.0.1', port: undefined }
+              ])
+            }}
+          >
+            添加依赖服务
+          </Button>
+        </Flex>
+        <Form.List name="services">
+          {(fields, { remove }) => (
+            <>
+              {fields.map((field) => (
+                <Flex gap={8} key={field.key} align="center" style={{ marginBottom: 8 }}>
+                  <Form.Item
+                    name={[field.name, 'name']}
+                    rules={[{ required: true, message: '必填' }]}
+                    noStyle
+                  >
+                    <Input placeholder="名称（Redis）" style={{ width: 130 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'host']} noStyle>
+                    <Input placeholder="127.0.0.1" style={{ width: 180 }} />
+                  </Form.Item>
+                  <Form.Item
+                    name={[field.name, 'port']}
+                    rules={[{ required: true, message: '必填' }]}
+                    noStyle
+                  >
+                    <InputNumber placeholder="端口" min={1} max={65535} style={{ width: 110 }} />
+                  </Form.Item>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(field.name)}
+                  />
+                </Flex>
+              ))}
             </>
           )}
         </Form.List>

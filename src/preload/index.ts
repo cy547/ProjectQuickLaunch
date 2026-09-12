@@ -39,6 +39,9 @@ const api: RendererApi = {
   getSystemProxy: () => ipcRenderer.invoke(IPC.GetSystemProxy),
   getPortSnapshot: () => ipcRenderer.invoke(IPC.GetPortSnapshot),
   killProcess: (pid: number) => ipcRenderer.invoke(IPC.KillProcess, pid),
+  checkPort: (port: number) => ipcRenderer.invoke(IPC.CheckPort, port),
+  checkService: (host: string, port: number) => ipcRenderer.invoke(IPC.CheckService, host, port),
+  checkUrl: (url: string) => ipcRenderer.invoke(IPC.CheckUrl, url),
 
   openExternal: (url) => ipcRenderer.invoke(IPC.OpenExternal, url),
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),

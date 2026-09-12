@@ -3,16 +3,21 @@ import type { IpcSender, UrlHealth } from '../shared/types'
 const CHECK_INTERVAL_MS = 3000
 const REQUEST_TIMEOUT_MS = 2500
 
-async function probe(url: string): Promise<boolean> {
+/** HTTP 探测：有任意响应即视为可达（不校验状态码） */
+export async function probeUrl(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<boolean> {
   try {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     await fetch(url, { signal: controller.signal, redirect: 'manual' })
     clearTimeout(timer)
     return true
   } catch {
     return false
   }
+}
+
+async function probe(url: string): Promise<boolean> {
+  return probeUrl(url)
 }
 
 /**

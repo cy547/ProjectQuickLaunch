@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { EventEmitter } from 'node:events'
 import { app } from 'electron'
+import { findPortOccupants } from './ports'
 import { taskKey } from '../shared/types'
 import type { Project, TaskConfig, TaskRunStatus } from '../shared/types'
 
@@ -133,6 +134,28 @@ export class ProcessManager extends EventEmitter {
             '  3. 前端依赖未安装（缺 node_modules）\n' +
             '  4. 项目依赖的数据库/中间件（MySQL、Redis、MQ 等）未启动\n'
         )
+      }
+      // 识别 Spring Boot 的端口占用报错，自动查出占用进程并写进日志
+      const portMatch = entry.logs.join('').match(/Port (\d+) was already in use/)
+      if (portMatch) {
+        const port = Number(portMatch[1])
+        void findPortOccupants(port).then((occups) => {
+          const listen = occups.filter((o) => o.state === 'LISTENING')
+          if (listen.length === 0) {
+            emitOutput(
+              `\n[诊断] 端口 ${port} 当前已无进程监听（之前的占用可能是刚停止的残留连接，` +
+                `等待 1-2 分钟或直接重试即可）。\n`
+            )
+            return
+          }
+          const lines = listen
+            .map((o) => `    ${o.processName}（PID ${o.pid}）监听 ${o.address}:${o.port}`)
+            .join('\n')
+          emitOutput(
+            `\n[诊断] 端口 ${port} 被以下进程占用：\n${lines}\n` +
+              `  处理：在「运行与端口」页搜索 ${port}，确认后可一键结束该进程；或修改本项目的服务端口。\n`
+          )
+        })
       }
       this.emit('status', { key, status: finalStatus, exitCode })
     }

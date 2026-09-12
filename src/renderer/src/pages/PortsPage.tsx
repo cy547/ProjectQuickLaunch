@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Badge,
   Button,
   Card,
   Empty,
+  Input,
   Popconfirm,
   Space,
   Switch,
@@ -12,13 +13,14 @@ import {
   Typography,
   message
 } from 'antd'
-import { ApiOutlined, ReloadOutlined } from '@ant-design/icons'
+import { ApiOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import type { PortOccupant, PortSnapshot, TaskPortInfo } from '../../../shared/types'
 
 export default function PortsPage() {
   const [snapshot, setSnapshot] = useState<PortSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [keyword, setKeyword] = useState('')
 
   const refresh = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -39,9 +41,31 @@ export default function PortsPage() {
     return () => clearInterval(timer)
   }, [autoRefresh, refresh])
 
-  const runningTasks = snapshot?.tasks.filter((t) => t.mainPid) ?? []
+  /** 关键字过滤：匹配端口号 / 进程名 / PID / 任务名 */
+  const matchKeyword = (...fields: Array<string | number | undefined>): boolean => {
+    const kw = keyword.trim().toLowerCase()
+    if (!kw) return true
+    return fields.some((f) => String(f ?? '').toLowerCase().includes(kw))
+  }
+
+  const runningTasks = useMemo(
+    () =>
+      (snapshot?.tasks.filter((t) => t.mainPid) ?? []).filter(
+        (t) =>
+          matchKeyword(t.taskName, t.projectName, t.mainPid) ||
+          t.ports.some((p) => matchKeyword(p.port, p.processName))
+      ),
+    [snapshot, keyword]
+  )
+  const otherPorts = useMemo(
+    () =>
+      (snapshot?.others ?? []).filter((o) =>
+        matchKeyword(o.port, o.processName, o.pid, o.address, o.protocol)
+      ),
+    [snapshot, keyword]
+  )
   const totalPorts = new Set(
-    (snapshot?.tasks ?? []).flatMap((t) => t.ports.map((p) => `${p.protocol}:${p.port}`))
+    runningTasks.flatMap((t) => t.ports.map((p) => `${p.protocol}:${p.port}`))
   ).size
 
   const killPort = async (occ: PortOccupant): Promise<void> => {
@@ -163,11 +187,21 @@ export default function PortsPage() {
         </Space>
       </Space>
 
-      <Space size={16} style={{ marginTop: 12, marginBottom: 16 }}>
-        <Badge count={runningTasks.length} color="#52c41a" offset={[0, 0]} />
-        <Typography.Text>
-          {runningTasks.length} 个任务运行中，占用 {totalPorts} 个端口
-        </Typography.Text>
+      <Space style={{ marginTop: 12, marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
+        <Space size={16}>
+          <Badge count={runningTasks.length} color="#52c41a" offset={[0, 0]} />
+          <Typography.Text>
+            {runningTasks.length} 个任务运行中，占用 {totalPorts} 个端口
+          </Typography.Text>
+        </Space>
+        <Input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="搜索端口 / 进程名 / PID / 任务名，如 8888"
+          prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,0.25)' }} />}
+          allowClear
+          style={{ width: 320 }}
+        />
       </Space>
 
       <Card title="应用内任务占用的端口" style={{ marginBottom: 16 }}>
@@ -187,9 +221,9 @@ export default function PortsPage() {
       <Card title="系统其他进程占用的端口（含系统服务）">
         <Table
           size="small"
-          pagination={{ pageSize: 15, showSizeChanger: false }}
+          pagination={{ pageSize: 50, showSizeChanger: false, hideOnSinglePage: true }}
           rowKey={(o) => `${o.protocol}:${o.address}:${o.port}:${o.pid}`}
-          dataSource={snapshot?.others ?? []}
+          dataSource={otherPorts}
           columns={otherColumns}
           loading={loading && !snapshot}
         />

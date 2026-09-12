@@ -142,6 +142,41 @@ export async function collectPortSnapshot(running: RunningTaskRef[]): Promise<{
   return { tasks: taskInfos, others, at: Date.now() }
 }
 
+export interface PortOccupantInfo {
+  protocol: 'TCP' | 'UDP'
+  address: string
+  port: number
+  state: string
+  pid: number
+  processName: string
+}
+
+/** 查询某个端口当前的占用情况（含 TIME_WAIT 等所有状态，用于失败诊断） */
+export async function findPortOccupants(port: number): Promise<PortOccupantInfo[]> {
+  const text = await execOut(`netstat -ano -p TCP | findstr ":${port} " & netstat -ano -p UDP | findstr ":${port} "`)
+  const all = await listProcesses()
+  const out: PortOccupantInfo[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*(TCP|UDP)\s+(\S+)\s+(\S+)\s*(?:([A-Z_]+)\s+)?(\d+)\s*$/i)
+    if (!m) continue
+    const protocol = m[1].toUpperCase() as 'TCP' | 'UDP'
+    const local = m[2]
+    const idx = local.lastIndexOf(':')
+    if (idx < 0 || Number(local.slice(idx + 1)) !== port) continue
+    const state = protocol === 'UDP' ? 'UDP' : (m[4] ?? 'LISTENING').toUpperCase()
+    const pid = Number(m[5])
+    out.push({
+      protocol,
+      address: local.slice(0, idx),
+      port,
+      state,
+      pid,
+      processName: all.get(pid)?.name ?? `pid-${pid}`
+    })
+  }
+  return out
+}
+
 /** 结束指定进程树（仅用于“结束占用端口的进程”功能；过滤系统关键 PID） */
 export async function killProcessTree(pid: number): Promise<{ ok: boolean; message?: string }> {
   if (!Number.isInteger(pid) || pid <= 4) {

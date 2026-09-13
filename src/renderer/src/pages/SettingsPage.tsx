@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Empty, Flex, Input, message, Popconfirm, Space, Table, Tag, Typography } from 'antd'
+import { Button, Card, Empty, Flex, Input, message, Popconfirm, Space, Switch, Table, Tag, Typography } from 'antd'
 import { FolderOpenOutlined, SaveOutlined } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { RUNTIME_LABEL } from '../../../shared/types'
@@ -65,6 +65,18 @@ export default function SettingsPage() {
           placeholder="留空 = 自动检测系统代理"
           style={{ maxWidth: 480 }}
         />
+      </Card>
+
+      <Card title="通用" style={{ marginTop: 16 }}>
+        <Space size={8}>
+          <Switch
+            checked={settings.trayOnClose !== false}
+            onChange={(v) => {
+              void window.api.saveSettings({ ...settings, trayOnClose: v }).then(setSettings)
+            }}
+          />
+          <Typography.Text>关闭窗口时最小化到系统托盘（不退出，托盘右键可退出）</Typography.Text>
+        </Space>
       </Card>
 
       <Card title="运行环境（自动安装）" style={{ marginTop: 16 }}>

@@ -5,6 +5,15 @@ import { registerIpc } from './ipc'
 import { processManager } from './processes'
 import { healthMonitor } from './health'
 import { runSmokeTest } from './smoke'
+import { createTray } from './tray'
+import { loadConfig } from './store'
+
+let mainWindow: BrowserWindow | null = null
+let quitting = false
+
+function getWindow(): BrowserWindow | null {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+}
 
 function createWindow(): BrowserWindow {
   const devIcon = path.join(__dirname, '../../build/icon.ico')
@@ -23,6 +32,14 @@ function createWindow(): BrowserWindow {
   })
 
   win.on('ready-to-show', () => win.show())
+
+  // 关闭窗口时最小化到托盘（设置里可关）；真正退出放行
+  win.on('close', (e) => {
+    if (!quitting && loadConfig().settings.trayOnClose !== false) {
+      e.preventDefault()
+      win.hide()
+    }
+  })
 
   // 外部链接一律交给系统浏览器
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -67,17 +84,21 @@ if (!isSmoke && !app.requestSingleInstanceLock()) {
     }
 
     const win = createWindow()
+    mainWindow = win
     registerIpc(win)
+    createTray(getWindow)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         const newWin = createWindow()
+        mainWindow = newWin
         registerIpc(newWin)
       }
     })
   })
 
   app.on('before-quit', () => {
+    quitting = true
     healthMonitor.stopAll()
     processManager.stopAll()
   })

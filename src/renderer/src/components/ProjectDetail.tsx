@@ -152,6 +152,16 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               <Tooltip title="打开文件夹">
                 <Button icon={<FolderOpenOutlined />} onClick={() => void window.api.openPath(project.path)} />
               </Tooltip>
+              <Tooltip title="在终端中打开">
+                <Button
+                  icon={<CodeOutlined />}
+                  onClick={() => {
+                    void window.api.openTerminal(project.path).then((r) => {
+                      if (!r.ok && r.message) message.warning(r.message)
+                    })
+                  }}
+                />
+              </Tooltip>
               <Tooltip title="用 VS Code 打开">
                 <Button icon={<CodeOutlined />} onClick={() => void openVSCode()} />
               </Tooltip>

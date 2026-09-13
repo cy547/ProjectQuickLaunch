@@ -7,6 +7,7 @@ directories:
   output: dist
 files:
   - out/**
+  - build/icon.png
   - package.json
 asar: true
 win:

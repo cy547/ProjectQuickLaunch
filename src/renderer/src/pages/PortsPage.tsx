@@ -14,10 +14,22 @@ import {
   message
 } from 'antd'
 import { ApiOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
-import type { PortOccupant, PortSnapshot, TaskPortInfo } from '../../../shared/types'
+import type { PortOccupant, PortSnapshot, StatEntry, TaskPortInfo } from '../../../shared/types'
+
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '-'
+  const min = Math.floor(ms / 60000)
+  const sec = Math.round((ms % 60000) / 1000)
+  if (min >= 60) {
+    const h = Math.floor(min / 60)
+    return `${h}h${min % 60}m`
+  }
+  return min > 0 ? `${min}m${sec}s` : `${sec}s`
+}
 
 export default function PortsPage() {
   const [snapshot, setSnapshot] = useState<PortSnapshot | null>(null)
+  const [stats, setStats] = useState<StatEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [keyword, setKeyword] = useState('')
@@ -26,6 +38,7 @@ export default function PortsPage() {
     setLoading(true)
     try {
       setSnapshot(await window.api.getPortSnapshot())
+      setStats(await window.api.getStats())
     } finally {
       setLoading(false)
     }
@@ -214,6 +227,45 @@ export default function PortsPage() {
             rowKey="key"
             dataSource={runningTasks}
             columns={taskColumns}
+          />
+        )}
+      </Card>
+
+      <Card title="启动统计（按任务）" style={{ marginBottom: 16 }}>
+        {stats.length === 0 ? (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有启动记录" />
+        ) : (
+          <Table
+            size="small"
+            pagination={false}
+            rowKey="key"
+            dataSource={stats}
+            columns={[
+              {
+                title: '任务',
+                render: (_: unknown, s: StatEntry) => (
+                  <Space size={4}>
+                    <Typography.Text strong>{s.taskName}</Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      @{s.projectName}
+                    </Typography.Text>
+                  </Space>
+                )
+              },
+              { title: '启动次数', dataIndex: 'count', width: 110 },
+              {
+                title: '累计运行时长',
+                dataIndex: 'totalMs',
+                width: 130,
+                render: (v: number) => formatDuration(v)
+              },
+              {
+                title: '最近启动',
+                dataIndex: 'lastStart',
+                width: 200,
+                render: (v: number) => (v ? new Date(v).toLocaleString('zh-CN') : '-')
+              }
+            ]}
           />
         )}
       </Card>

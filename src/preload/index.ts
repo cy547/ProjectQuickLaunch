@@ -53,6 +53,8 @@ const api: RendererApi = {
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),
   openInVSCode: (p) => ipcRenderer.invoke(IPC.OpenInVSCode, p),
   openLogFile: (projectId, taskId) => ipcRenderer.invoke(IPC.OpenLogFile, projectId, taskId),
+  openTerminal: (dir: string) => ipcRenderer.invoke(IPC.OpenTerminal, dir),
+  getStats: () => ipcRenderer.invoke(IPC.GetStats),
 
   onTaskStatus: (cb) => subscribe<TaskStatusPayload>(IPC.EventTaskStatus, cb),
   onTaskOutput: (cb) => subscribe<TaskOutputPayload>(IPC.EventTaskOutput, cb),

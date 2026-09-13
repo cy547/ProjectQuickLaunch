@@ -39,6 +39,21 @@ export interface Settings {
   cloneProxy?: string
   /** 应用管理的运行环境（自动下载安装的 Node/JDK/Maven 等） */
   managedRuntimes?: ManagedRuntime[]
+  /** 关闭窗口时最小化到托盘（默认 true） */
+  trayOnClose?: boolean
+}
+
+/** 单个任务的启动统计 */
+export interface StatEntry {
+  key: string
+  projectName: string
+  taskName: string
+  /** 启动次数 */
+  count: number
+  /** 累计运行时长（毫秒，按会话内正常退出的任务累计） */
+  totalMs: number
+  /** 最近一次启动时间戳 */
+  lastStart: number
 }
 
 /** 运行环境类型（docker/go/rust/dotnet/python 仅检测，不支持自动安装） */
@@ -176,6 +191,8 @@ export const IPC = {
   CheckEnvFiles: 'fs:check-env-files',
   GetTaskRequirements: 'project:task-requirements',
   GetRuntimeVersions: 'runtime:versions',
+  OpenTerminal: 'app:open-terminal',
+  GetStats: 'stats:get',
   TaskStart: 'task:start',
   TaskStop: 'task:stop',
   TaskLogs: 'task:logs',

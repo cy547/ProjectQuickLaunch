@@ -15,6 +15,7 @@ import type {
   CloneProgressPayload,
   TaskOutputPayload,
   TaskStatusPayload,
+  StatEntry,
   UrlHealthPayload
 } from './types'
 
@@ -75,6 +76,10 @@ export interface RendererApi {
   getTaskRequirements(projectId: string, taskId: string): Promise<RuntimeRequirement[]>
   /** 检测本机已装的运行环境版本 */
   getRuntimeVersions(types: RuntimeType[]): Promise<Partial<Record<RuntimeType, string | null>>>
+  /** 在系统终端（Windows Terminal/PowerShell）中打开指定目录 */
+  openTerminal(dir: string): Promise<OpResult>
+  /** 启动统计（按任务聚合） */
+  getStats(): Promise<StatEntry[]>
 
   onTaskStatus(cb: (p: TaskStatusPayload) => void): () => void
   onTaskOutput(cb: (p: TaskOutputPayload) => void): () => void

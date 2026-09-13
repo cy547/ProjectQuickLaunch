@@ -4,6 +4,7 @@ import path from 'node:path'
 import { EventEmitter } from 'node:events'
 import { app } from 'electron'
 import { findPortOccupants } from './ports'
+import { recordEnd, recordStart } from './stats'
 import { taskKey } from '../shared/types'
 import type { Project, TaskConfig, TaskRunStatus } from '../shared/types'
 
@@ -18,6 +19,8 @@ interface RunningEntry {
   /** 同步落盘的日志文件流 */
   logStream?: fs.WriteStream
   logFile?: string
+  /** 本次运行开始时间（统计用） */
+  startedAt: number
 }
 
 function logsDir(): string {
@@ -80,7 +83,14 @@ export class ProcessManager extends EventEmitter {
       // 日志落盘失败不影响任务运行
     }
 
-    const entry: RunningEntry = { proc: null as unknown as ChildProcess, logs: [], killed: false, logStream, logFile }
+    const entry: RunningEntry = {
+      proc: null as unknown as ChildProcess,
+      logs: [],
+      killed: false,
+      logStream,
+      logFile,
+      startedAt: Date.now()
+    }
 
     const emitOutput = (data: string): void => {
       entry.logs.push(data)
@@ -108,6 +118,7 @@ export class ProcessManager extends EventEmitter {
     }
     entry.proc = proc
     this.running.set(key, entry)
+    recordStart(project.id, task.id)
 
     if (command !== task.command) {
       emitOutput('[准备] 未检测到 node_modules，先自动执行 npm install，完成后再启动任务…\n')
@@ -120,6 +131,7 @@ export class ProcessManager extends EventEmitter {
       if (this.running.get(key) !== entry) return
       this.running.delete(key)
       entry.logStream?.end()
+      recordEnd(project.id, task.id, Date.now() - entry.startedAt)
       const finalStatus: TaskRunStatus = entry.killed
         ? 'stopped'
         : exitCode === 0

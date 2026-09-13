@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { exec, spawn } from 'node:child_process'
 import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
 import { IPC, taskKey } from './../shared/types'
 import type {
@@ -14,12 +14,13 @@ import { loadConfig, removeProject, saveSettings, upsertProject } from './store'
 import { processManager } from './processes'
 import { healthMonitor } from './health'
 import { cloneManager } from './gitClone'
-import { scanSubProjects } from './scan'
+import { scanSubProjects, requirementsForSuggestion } from './scan'
 import { checkEnvFiles, detectProject } from './detect'
-import { requirementsForSuggestion } from './scan'
 import { detectSystemProxy } from './proxy'
 import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree } from './ports'
 import { probeUrl } from './health'
+import { getAllStats } from './stats'
+import { managedEnvForTasks } from './projectOps'
 import {
   buildEnvForManaged,
   checkRuntimes,
@@ -27,11 +28,6 @@ import {
   installRuntime
 } from './runtimes'
 import type { PackageJsonInfo } from '../shared/api'
-
-/** 读取设置并为任务构建托管运行环境的注入变量 */
-function managedEnvForTasks(): { managedPaths: string[]; javaHome?: string } {
-  return buildEnvForManaged(loadConfig().settings.managedRuntimes)
-}
 
 function stopTask(projectId: string, taskId: string): void {
   healthMonitor.stop(taskKey(projectId, taskId))
@@ -269,5 +265,54 @@ export function registerIpc(win: BrowserWindow): void {
     }
     void shell.openPath(file)
     return { ok: true }
+  })
+
+  // 在系统终端中打开目录：优先 Windows Terminal，回退 PowerShell
+  ipcMain.handle(IPC.OpenTerminal, (_e, dir: string): Promise<OpResult> => {
+    void dir
+    return new Promise((resolve) => {
+      const target = String(dir ?? '')
+      if (!target || !fs.existsSync(target)) {
+        resolve({ ok: false, message: '目录不存在' })
+        return
+      }
+      exec('where wt.exe >nul 2>&1', { windowsHide: true }, (err) => {
+        try {
+          if (!err) {
+            // Windows Terminal 的 app execution alias 需经 shell 解析
+            spawn(`start wt -d "${target}"`, [], { shell: true, detached: true, stdio: 'ignore' }).unref()
+          } else {
+            spawn('powershell.exe', ['-NoLogo'], {
+              cwd: target,
+              detached: true,
+              stdio: 'ignore'
+            }).unref()
+          }
+          resolve({ ok: true })
+        } catch {
+          resolve({ ok: false, message: '打开终端失败' })
+        }
+      })
+    })
+  })
+
+  ipcMain.handle(IPC.GetStats, () => {
+    const config = loadConfig()
+    return Object.entries(getAllStats())
+      .map(([key, s]) => {
+        const [projectId, taskId] = key.split(':')
+        const project = config.projects.find((p) => p.id === projectId)
+        const task = project?.tasks.find((t) => t.id === taskId)
+        const quick = project?.quickCommands?.find((t) => t.id === taskId)
+        return {
+          key,
+          projectName: project?.name ?? projectId,
+          taskName: task?.name ?? quick?.name ?? taskId,
+          count: s.count,
+          totalMs: s.totalMs,
+          lastStart: s.lastStart
+        }
+      })
+      .sort((a, b) => b.count - a.count || b.lastStart - a.lastStart)
   })
 }

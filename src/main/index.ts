@@ -6,6 +6,7 @@ import { processManager } from './processes'
 import { healthMonitor } from './health'
 import { runSmokeTest } from './smoke'
 import { createTray } from './tray'
+import { initUpdater } from './updater'
 import { loadConfig } from './store'
 
 let mainWindow: BrowserWindow | null = null
@@ -92,6 +93,7 @@ if (!isSmoke && !app.requestSingleInstanceLock()) {
     mainWindow = win
     registerIpc(win)
     createTray(getWindow)
+    initUpdater(getWindow)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

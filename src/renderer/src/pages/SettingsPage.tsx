@@ -1,5 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Empty, Flex, Input, message, Popconfirm, Space, Switch, Table, Tag, Typography } from 'antd'
+import {
+  Button,
+  Card,
+  Empty,
+  Flex,
+  Input,
+  message,
+  Popconfirm,
+  Progress,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  Typography
+} from 'antd'
 import { FolderOpenOutlined, SaveOutlined } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { RUNTIME_LABEL } from '../../../shared/types'
@@ -11,10 +25,44 @@ export default function SettingsPage() {
   const [dir, setDir] = useState(settings.defaultCloneDir)
   const [proxy, setProxy] = useState(settings.cloneProxy ?? '')
   const [runtimesDir, setRuntimesDir] = useState(settings.runtimesDir ?? '')
+  const [version, setVersion] = useState('')
+  const [updaterMessage, setUpdaterMessage] = useState('')
+  const [updaterBusy, setUpdaterBusy] = useState(false)
+  const [updaterDownloading, setUpdaterDownloading] = useState(false)
+  const [updaterPercent, setUpdaterPercent] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     setDir(settings.defaultCloneDir)
   }, [settings.defaultCloneDir])
+
+  useEffect(() => {
+    void window.api.appVersion().then(setVersion)
+    const unsub = window.api.onUpdaterEvent((p) => {
+      if (p.message) setUpdaterMessage(p.message)
+      if (p.event === 'downloading') {
+        setUpdaterDownloading(true)
+        setUpdaterPercent(typeof p.percent === 'number' ? Math.round(p.percent) : undefined)
+      } else if (p.event === 'downloaded') {
+        setUpdaterDownloading(false)
+        setUpdaterPercent(100)
+        message.success(`新版本 ${p.version ?? ''} 已下载，重启应用即可安装`)
+      } else if (p.event === 'error') {
+        setUpdaterDownloading(false)
+      }
+    })
+    return unsub
+  }, [])
+
+  const checkUpdate = async (): Promise<void> => {
+    setUpdaterBusy(true)
+    setUpdaterDownloading(false)
+    try {
+      const r = await window.api.updaterCheck()
+      setUpdaterMessage(r.message ?? '正在检查更新…')
+    } finally {
+      setUpdaterBusy(false)
+    }
+  }
 
   const pickDir = async (): Promise<void> => {
     const folder = await window.api.selectFolder('选择默认克隆目录')
@@ -149,7 +197,27 @@ export default function SettingsPage() {
       </Card>
 
       <Card title="关于" style={{ marginTop: 16 }}>
-        <Typography.Paragraph type="secondary" style={{ marginBottom: 4 }}>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Space size={8}>
+            <Typography.Text strong>当前版本 v{version}</Typography.Text>
+            {updaterMessage && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {updaterMessage}
+              </Typography.Text>
+            )}
+          </Space>
+          <Button size="small" loading={updaterBusy} onClick={() => void checkUpdate()}>
+            检查更新
+          </Button>
+        </Space>
+        {updaterDownloading && (
+          <Progress
+            percent={updaterPercent}
+            status={updaterPercent === undefined ? 'active' : 'normal'}
+            style={{ marginTop: 8, maxWidth: 420 }}
+          />
+        )}
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 4, marginTop: 12 }}>
           配置文件位置：%APPDATA%/ProjectQuickLaunch/config.json
         </Typography.Paragraph>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>

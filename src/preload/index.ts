@@ -6,6 +6,7 @@ import type {
   RuntimeType,
   TaskOutputPayload,
   TaskStatusPayload,
+  UpdaterEvent,
   UrlHealthPayload
 } from '../shared/types'
 import type { RendererApi } from '../shared/api'
@@ -55,6 +56,10 @@ const api: RendererApi = {
   selectFile: (title?: string) => ipcRenderer.invoke(IPC.SelectFile, title),
   openIde: (dir: string, idePath?: string) => ipcRenderer.invoke(IPC.OpenIde, dir, idePath),
   notify: (title: string, body: string) => ipcRenderer.invoke(IPC.AppNotify, title, body),
+  updaterCheck: () => ipcRenderer.invoke(IPC.UpdaterCheck),
+  updaterInstall: () => ipcRenderer.invoke(IPC.UpdaterInstall),
+  appVersion: () => ipcRenderer.invoke(IPC.AppVersion),
+  onUpdaterEvent: (cb: (p: UpdaterEvent) => void) => subscribe<UpdaterEvent>(IPC.EventUpdater, cb),
 
   openExternal: (url) => ipcRenderer.invoke(IPC.OpenExternal, url),
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),

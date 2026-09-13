@@ -163,6 +163,14 @@ export interface PortSnapshot {
   at: number
 }
 
+/** 更新器状态事件载荷 */
+export interface UpdaterEvent {
+  event: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  percent?: number
+  message?: string
+}
+
 export interface AppConfig {
   projects: Project[]
   settings: Settings
@@ -215,6 +223,10 @@ export const IPC = {
   CheckTaskProcess: 'net:check-task-process',
   CheckTaskLog: 'net:check-task-log',
   GetStats: 'stats:get',
+  UpdaterCheck: 'updater:check',
+  UpdaterInstall: 'updater:install',
+  AppVersion: 'app:version',
+  EventUpdater: 'event:updater',
   TaskStart: 'task:start',
   TaskStop: 'task:stop',
   TaskLogs: 'task:logs',

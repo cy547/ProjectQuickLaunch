@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    // electron-updater 打进主进程包（不外置），避免要求打包 node_modules
+    plugins: [externalizeDepsPlugin({ exclude: ['electron-updater'] })]
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

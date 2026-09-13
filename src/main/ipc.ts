@@ -21,6 +21,7 @@ import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree, t
 import { probeUrl } from './health'
 import { getAllStats } from './stats'
 import { managedEnvForTasks } from './projectOps'
+import { checkForUpdatesNow, installDownloadedUpdate } from './updater'
 import {
   buildEnvForManaged,
   checkRuntimes,
@@ -393,4 +394,8 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle(IPC.CheckTaskLog, (_e, projectId: string, taskId: string, keyword: string) =>
     processManager.logsContain(projectId, taskId, String(keyword ?? ''))
   )
+
+  ipcMain.handle(IPC.UpdaterCheck, () => checkForUpdatesNow(() => win))
+  ipcMain.handle(IPC.UpdaterInstall, () => installDownloadedUpdate())
+  ipcMain.handle(IPC.AppVersion, () => app.getVersion())
 }

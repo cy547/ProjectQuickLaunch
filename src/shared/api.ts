@@ -16,6 +16,7 @@ import type {
   TaskOutputPayload,
   TaskStatusPayload,
   StatEntry,
+  UpdaterEvent,
   UrlHealthPayload
 } from './types'
 
@@ -86,6 +87,14 @@ export interface RendererApi {
   openIde(dir: string, idePath?: string): Promise<OpResult>
   /** 系统通知（点击会打开主窗口） */
   notify(title: string, body: string): Promise<void>
+  /** 手动检查更新 */
+  updaterCheck(): Promise<UpdaterEvent>
+  /** 安装已下载的更新（重启应用） */
+  updaterInstall(): Promise<OpResult>
+  /** 当前应用版本 */
+  appVersion(): Promise<string>
+  /** 更新器状态事件 */
+  onUpdaterEvent(cb: (p: UpdaterEvent) => void): () => void
   /** 在系统终端（Windows Terminal/PowerShell）中打开指定目录 */
   openTerminal(dir: string): Promise<OpResult>
   /** 启动统计（按任务聚合） */

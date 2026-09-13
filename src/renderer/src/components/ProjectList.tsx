@@ -4,6 +4,7 @@ import {
   CloudDownloadOutlined,
   ImportOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
   RocketOutlined,
   SettingOutlined
 } from '@ant-design/icons'
@@ -15,6 +16,8 @@ export default function ProjectList() {
   const taskStates = useAppStore((s) => s.taskStates)
   const setView = useAppStore((s) => s.setView)
   const openEdit = useAppStore((s) => s.openEdit)
+
+  const setOnboardingOpen = useAppStore((s) => s.setOnboardingOpen)
 
   return (
     <aside className="app-sider" style={{ width: 232, flexShrink: 0 }}>
@@ -69,6 +72,9 @@ export default function ProjectList() {
         </Button>
         <Button block icon={<ApiOutlined />} onClick={() => setView({ type: 'ports' })}>
           运行与端口
+        </Button>
+        <Button block icon={<QuestionCircleOutlined />} onClick={() => setOnboardingOpen(true)}>
+          新手教程
         </Button>
         <Button block icon={<SettingOutlined />} onClick={() => setView({ type: 'settings' })}>
           设置

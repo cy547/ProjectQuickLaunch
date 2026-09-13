@@ -3,6 +3,7 @@ import { Layout, Spin } from 'antd'
 import ProjectList from './components/ProjectList'
 import ProjectDetail from './components/ProjectDetail'
 import ProjectEditModal from './components/ProjectEditModal'
+import OnboardingModal from './components/OnboardingModal'
 import ClonePage from './pages/ClonePage'
 import ImportPage from './pages/ImportPage'
 import PortsPage from './pages/PortsPage'
@@ -63,6 +64,7 @@ export default function App() {
         {view.type === 'settings' && <SettingsPage />}
       </Layout.Content>
       <ProjectEditModal />
+      <OnboardingModal />
     </Layout>
   )
 }

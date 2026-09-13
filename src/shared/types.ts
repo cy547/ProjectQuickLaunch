@@ -41,6 +41,8 @@ export interface Settings {
   managedRuntimes?: ManagedRuntime[]
   /** 关闭窗口时最小化到托盘（默认 true） */
   trayOnClose?: boolean
+  /** 是否已完成新手教程（首次启动自动弹出用） */
+  onboarded?: boolean
 }
 
 /** 单个任务的启动统计 */

@@ -40,6 +40,7 @@ interface AppState {
   projects: Project[]
   settings: Settings
   view: View
+  onboardingOpen: boolean
   taskStates: Record<string, TaskRuntime>
   urlHealth: Record<string, UrlHealth>
   logs: Record<string, string[]>
@@ -58,6 +59,8 @@ interface AppState {
   updateTaskUrl: (projectId: string, taskId: string, url: string) => Promise<void>
   openEdit: (state?: Omit<EditModalState, 'open'>) => void
   closeEdit: () => void
+  setOnboardingOpen: (open: boolean) => void
+  markOnboarded: () => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -70,6 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   logs: {},
   urlCandidates: {},
   editModal: { open: false },
+  onboardingOpen: false,
 
   init: (cfg) => {
     const firstProject = cfg.projects[0]
@@ -77,7 +81,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       loaded: true,
       projects: cfg.projects,
       settings: cfg.settings,
-      view: firstProject ? { type: 'project', projectId: firstProject.id } : { type: 'clone' }
+      view: firstProject ? { type: 'project', projectId: firstProject.id } : { type: 'clone' },
+      onboardingOpen: !cfg.settings.onboarded && cfg.projects.length === 0
     })
   },
 
@@ -136,7 +141,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   openEdit: (state) => set({ editModal: { open: true, ...state } }),
 
-  closeEdit: () => set({ editModal: { open: false } })
+  closeEdit: () => set({ editModal: { open: false } }),
+
+  setOnboardingOpen: (open) => set({ onboardingOpen: open }),
+
+  markOnboarded: () => {
+    const settings = { ...get().settings, onboarded: true }
+    set({ settings })
+    void window.api.saveSettings(settings).then(get().setSettings)
+  }
 }))
 
 /** 某项目当前运行中的任务数 */

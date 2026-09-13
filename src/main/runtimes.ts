@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
+import { loadConfig } from './store'
 import type {
   IpcSender,
   ManagedRuntime,
@@ -11,7 +12,10 @@ import type {
 
 const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000
 
+/** 运行环境安装根目录：设置里可自定义，默认 %APPDATA%/ProjectQuickLaunch/runtimes */
 async function runtimesRoot(): Promise<string> {
+  const custom = loadConfig().settings.runtimesDir?.trim()
+  if (custom) return custom
   const { app } = await import('electron')
   return path.join(app.getPath('appData'), 'ProjectQuickLaunch', 'runtimes')
 }

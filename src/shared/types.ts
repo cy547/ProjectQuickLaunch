@@ -56,6 +56,8 @@ export interface Settings {
   trayOnClose?: boolean
   /** 是否已完成新手教程（首次启动自动弹出用） */
   onboarded?: boolean
+  /** 运行环境安装目录（空 = %APPDATA%/ProjectQuickLaunch/runtimes） */
+  runtimesDir?: string
 }
 
 /** 单个任务的启动统计 */

@@ -10,6 +10,7 @@ export default function SettingsPage() {
   const setSettings = useAppStore((s) => s.setSettings)
   const [dir, setDir] = useState(settings.defaultCloneDir)
   const [proxy, setProxy] = useState(settings.cloneProxy ?? '')
+  const [runtimesDir, setRuntimesDir] = useState(settings.runtimesDir ?? '')
 
   useEffect(() => {
     setDir(settings.defaultCloneDir)
@@ -20,8 +21,18 @@ export default function SettingsPage() {
     if (folder) setDir(folder)
   }
 
+  const pickRuntimesDir = async (): Promise<void> => {
+    const folder = await window.api.selectFolder('选择运行环境安装目录')
+    if (folder) setRuntimesDir(folder)
+  }
+
   const save = async (): Promise<void> => {
-    const saved = await window.api.saveSettings({ ...settings, defaultCloneDir: dir, cloneProxy: proxy.trim() })
+    const saved = await window.api.saveSettings({
+      ...settings,
+      defaultCloneDir: dir,
+      cloneProxy: proxy.trim(),
+      runtimesDir: runtimesDir.trim()
+    })
     setSettings(saved)
     message.success('设置已保存')
   }
@@ -83,6 +94,25 @@ export default function SettingsPage() {
         <Typography.Paragraph type="secondary">
           「导入项目」自动下载的运行环境会列在这里。启动任务时优先使用这些版本（PATH 与 JAVA_HOME 自动注入）。
         </Typography.Paragraph>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          安装目录：留空 = %APPDATA%/ProjectQuickLaunch/runtimes；修改后只对新安装的运行环境生效。
+        </Typography.Paragraph>
+        <Flex gap={12} style={{ marginBottom: 12 }}>
+          <Input
+            value={runtimesDir}
+            onChange={(e) => setRuntimesDir(e.target.value)}
+            placeholder="留空 = 默认目录"
+            addonAfter={
+              <FolderOpenOutlined
+                onClick={() => void pickRuntimesDir()}
+                style={{ cursor: 'pointer' }}
+              />
+            }
+          />
+          <Button icon={<SaveOutlined />} onClick={() => void save()}>
+            保存目录
+          </Button>
+        </Flex>
         {managed.length === 0 ? (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有自动安装的运行环境" />
         ) : (

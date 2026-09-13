@@ -1,3 +1,12 @@
+/** 就绪判定方式：任务怎样才算"真正就绪" */
+export type TaskReadyType = 'url' | 'port' | 'process' | 'log'
+
+export interface TaskReady {
+  type: TaskReadyType
+  /** url: 探测地址（默认任务访问地址）；port: 端口号；process: 子进程名；log: 日志关键字 */
+  value?: string
+}
+
 /** 任务启动配置 */
 export interface TaskConfig {
   id: string
@@ -8,6 +17,8 @@ export interface TaskConfig {
   cwd?: string
   /** 启动成功后的访问地址，如 http://localhost:5173（选填） */
   url?: string
+  /** 就绪判定（选填；配置了访问地址时默认按 URL 探测） */
+  ready?: TaskReady
 }
 
 /** 项目 */
@@ -20,6 +31,8 @@ export interface Project {
   quickCommands?: TaskConfig[]
   /** 依赖服务（一键启动前预检连通性，如 MySQL 3306 / Redis 6379） */
   services?: ServiceDep[]
+  /** 首选 IDE 可执行文件路径（选填，默认 VS Code），如 idea64.exe */
+  idePath?: string
   createdAt: number
 }
 
@@ -194,6 +207,11 @@ export const IPC = {
   GetTaskRequirements: 'project:task-requirements',
   GetRuntimeVersions: 'runtime:versions',
   OpenTerminal: 'app:open-terminal',
+  OpenIde: 'app:open-ide',
+  SelectFile: 'dialog:select-file',
+  AppNotify: 'app:notify',
+  CheckTaskProcess: 'net:check-task-process',
+  CheckTaskLog: 'net:check-task-log',
   GetStats: 'stats:get',
   TaskStart: 'task:start',
   TaskStop: 'task:stop',

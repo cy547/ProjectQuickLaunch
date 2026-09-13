@@ -48,6 +48,13 @@ const api: RendererApi = {
     ipcRenderer.invoke(IPC.GetTaskRequirements, projectId, taskId),
   getRuntimeVersions: (types: RuntimeType[]) =>
     ipcRenderer.invoke(IPC.GetRuntimeVersions, types),
+  checkTaskProcess: (projectId: string, taskId: string, name: string) =>
+    ipcRenderer.invoke(IPC.CheckTaskProcess, projectId, taskId, name),
+  checkTaskLog: (projectId: string, taskId: string, keyword: string) =>
+    ipcRenderer.invoke(IPC.CheckTaskLog, projectId, taskId, keyword),
+  selectFile: (title?: string) => ipcRenderer.invoke(IPC.SelectFile, title),
+  openIde: (dir: string, idePath?: string) => ipcRenderer.invoke(IPC.OpenIde, dir, idePath),
+  notify: (title: string, body: string) => ipcRenderer.invoke(IPC.AppNotify, title, body),
 
   openExternal: (url) => ipcRenderer.invoke(IPC.OpenExternal, url),
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),

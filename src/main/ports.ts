@@ -178,6 +178,21 @@ export async function findPortOccupants(port: number): Promise<PortOccupantInfo[
   return out
 }
 
+/** 检查某个任务进程树内是否存在名字匹配 filter 的进程（如 mvn 树下的 java） */
+export async function taskHasProcess(
+  mainPid: number | undefined,
+  nameFilter: string
+): Promise<boolean> {
+  if (!mainPid) return false
+  const all = await listProcesses()
+  const tree = descendantsOf(mainPid, all)
+  for (const pid of tree) {
+    const name = all.get(pid)?.name
+    if (name && name.toLowerCase().includes(nameFilter.toLowerCase())) return true
+  }
+  return false
+}
+
 /** 结束指定进程树（仅用于“结束占用端口的进程”功能；过滤系统关键 PID） */
 export async function killProcessTree(pid: number): Promise<{ ok: boolean; message?: string }> {
   if (!Number.isInteger(pid) || pid <= 4) {

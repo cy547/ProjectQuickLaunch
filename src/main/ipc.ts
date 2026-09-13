@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { exec, spawn } from 'node:child_process'
-import { dialog, ipcMain, shell, type BrowserWindow } from 'electron'
+import { app, dialog, ipcMain, Notification, shell, BrowserWindow } from 'electron'
 import { IPC, taskKey } from './../shared/types'
 import type {
   OpResult,
@@ -17,7 +17,7 @@ import { cloneManager } from './gitClone'
 import { scanSubProjects, requirementsForSuggestion } from './scan'
 import { checkEnvFiles, detectProject } from './detect'
 import { detectSystemProxy } from './proxy'
-import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree } from './ports'
+import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree, taskHasProcess } from './ports'
 import { probeUrl } from './health'
 import { getAllStats } from './stats'
 import { managedEnvForTasks } from './projectOps'
@@ -39,12 +39,33 @@ export function registerIpc(win: BrowserWindow): void {
     if (!win.isDestroyed()) win.webContents.send(channel, ...args)
   }
 
-  // 任务进程事件 -> 渲染进程
+  // 任务进程事件 -> 渲染进程（日志输出 + 状态）
   processManager.on('output', (key: string, data: string) => {
     notify(IPC.EventTaskOutput, { key, data })
   })
-  processManager.on('status', (payload: unknown) => {
+  // 任务异常退出时弹系统通知（点击打开主窗口）；用户主动停止不通知
+  processManager.on('status', (payload: { key: string; status: string; exitCode?: number | null }) => {
     notify(IPC.EventTaskStatus, payload)
+    if (payload.status !== 'error' || !Notification.isSupported()) return
+    const config = loadConfig()
+    const [projectId, taskId] = payload.key.split(':')
+    const project = config.projects.find((p) => p.id === projectId)
+    const task = project?.tasks.find((t) => t.id === taskId)
+    const icon = path.join(app.getAppPath(), 'build', 'icon.png')
+    const n = new Notification({
+      title: `「${task?.name ?? taskId}」异常退出`,
+      body: `项目 ${project?.name ?? projectId} 的任务以退出码 ${payload.exitCode ?? '?'} 结束，点击查看日志。`,
+      icon: fs.existsSync(icon) ? icon : undefined
+    })
+    n.on('click', () => {
+      const target = BrowserWindow.getAllWindows()[0]
+      if (target) {
+        if (target.isMinimized()) target.restore()
+        target.show()
+        target.focus()
+      }
+    })
+    n.show()
   })
 
   ipcMain.handle(IPC.ConfigLoad, () => loadConfig())
@@ -315,4 +336,61 @@ export function registerIpc(win: BrowserWindow): void {
       })
       .sort((a, b) => b.count - a.count || b.lastStart - a.lastStart)
   })
+
+  ipcMain.handle(IPC.SelectFile, async (_e, title?: string) => {
+    const result = await dialog.showOpenDialog(win, {
+      title: title || '选择文件',
+      properties: ['openFile'],
+      filters: [{ name: '可执行文件', extensions: ['exe', 'bat', 'cmd'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle(IPC.OpenIde, (_e, dir: string, idePath: string): OpResult => {
+    if (!dir || !fs.existsSync(dir)) return { ok: false, message: '项目目录不存在' }
+    if (idePath && fs.existsSync(idePath)) {
+      try {
+        spawn(idePath, [dir], { detached: true, stdio: 'ignore' }).unref()
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, message: `无法启动 IDE：${(err as Error).message}` }
+      }
+    }
+    // 未配置 IDE 路径时回退 VS Code
+    const child = spawn('code', [dir], { shell: true, detached: true, stdio: 'ignore' })
+    child.on('error', () => {
+      void shell.openPath(dir)
+    })
+    child.unref()
+    return { ok: true }
+  })
+
+  ipcMain.handle(IPC.AppNotify, (_e, title: string, body: string) => {
+    if (!Notification.isSupported()) return
+    const icon = path.join(app.getAppPath(), 'build', 'icon.png')
+    const n = new Notification({
+      title: String(title ?? 'ProjectQuickLaunch'),
+      body: String(body ?? ''),
+      icon: fs.existsSync(icon) ? icon : undefined
+    })
+    n.on('click', () => {
+      const target = BrowserWindow.getAllWindows()[0]
+      if (target) {
+        if (target.isMinimized()) target.restore()
+        target.show()
+        target.focus()
+      }
+    })
+    n.show()
+  })
+
+  ipcMain.handle(IPC.CheckTaskProcess, (_e, projectId: string, taskId: string, name: string) => {
+    const ref = processManager.listRunning().find((r) => r.key === taskKey(projectId, taskId))
+    return taskHasProcess(ref?.mainPid, String(name ?? ''))
+  })
+
+  ipcMain.handle(IPC.CheckTaskLog, (_e, projectId: string, taskId: string, keyword: string) =>
+    processManager.logsContain(projectId, taskId, String(keyword ?? ''))
+  )
 }

@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Button, Flex, Form, Input, InputNumber, message, Modal, Space, Typography } from 'antd'
+import { Button, Flex, Form, Input, InputNumber, message, Modal, Select, Space, Typography } from 'antd'
 import { ApartmentOutlined, DeleteOutlined, FolderOpenOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useAppStore } from '../store'
 import { newId } from '../utils'
-import type { Project } from '../../../shared/types'
+import type { Project, TaskReadyType } from '../../../shared/types'
 
 interface TaskFormValue {
   name: string
   command: string
   cwd?: string
   url?: string
+  readyType?: TaskReadyType
+  readyValue?: string
 }
 
 interface QuickCommandFormValue {
@@ -27,9 +29,24 @@ interface ServiceFormValue {
 interface FormValues {
   name: string
   path: string
+  idePath?: string
   tasks: TaskFormValue[]
   quickCommands: QuickCommandFormValue[]
   services: ServiceFormValue[]
+}
+
+const READY_OPTIONS = [
+  { value: 'url', label: 'URL 探测' },
+  { value: 'port', label: '端口被监听' },
+  { value: 'process', label: '子进程出现' },
+  { value: 'log', label: '日志关键字' }
+]
+
+const READY_PLACEHOLDER: Record<TaskReadyType, string> = {
+  url: '探测地址（默认访问地址）',
+  port: '端口号，如 8080',
+  process: '子进程名，如 java',
+  log: '日志关键字，如 Started Application'
 }
 
 export default function ProjectEditModal() {
@@ -47,8 +64,16 @@ export default function ProjectEditModal() {
     form.setFieldsValue({
       name: p?.name ?? editModal.presetName ?? '',
       path: p?.path ?? editModal.presetPath ?? '',
+      idePath: p?.idePath,
       tasks:
-        p?.tasks.map((t) => ({ name: t.name, command: t.command, cwd: t.cwd, url: t.url })) ??
+        p?.tasks.map((t) => ({
+          name: t.name,
+          command: t.command,
+          cwd: t.cwd,
+          url: t.url,
+          readyType: t.ready?.type,
+          readyValue: t.ready?.value
+        })) ??
         editModal.presetTasks?.map((t) => ({ name: t.name, command: t.command, cwd: t.cwd, url: t.url })) ??
         [],
       quickCommands:
@@ -151,6 +176,11 @@ export default function ProjectEditModal() {
     form.setFieldValue(['tasks', index, 'cwd'], folder)
   }
 
+  const pickIde = async (): Promise<void> => {
+    const file = await window.api.selectFile('选择 IDE 可执行文件（如 idea64.exe）')
+    if (file) form.setFieldValue('idePath', file)
+  }
+
   const handleOk = async (): Promise<void> => {
     const values = await form.validateFields()
     setSaving(true)
@@ -166,7 +196,10 @@ export default function ProjectEditModal() {
           name: t.name.trim(),
           command: t.command.trim(),
           ...(t.cwd?.trim() ? { cwd: t.cwd.trim() } : {}),
-          ...(t.url?.trim() ? { url: t.url.trim() } : {})
+          ...(t.url?.trim() ? { url: t.url.trim() } : {}),
+          ...(t.readyType && (t.readyValue?.trim() || t.readyType === 'url')
+            ? { ready: { type: t.readyType, ...(t.readyValue?.trim() ? { value: t.readyValue.trim() } : {}) } }
+            : {})
         })),
         quickCommands: (values.quickCommands ?? [])
           .filter((q) => q.name?.trim() && q.command?.trim())
@@ -183,7 +216,8 @@ export default function ProjectEditModal() {
             name: s.name.trim(),
             host: s.host?.trim() || '127.0.0.1',
             port: Number(s.port)
-          }))
+          })),
+        ...(values.idePath?.trim() ? { idePath: values.idePath.trim() } : {})
       }
       const projects = await window.api.saveProject(project)
       setProjects(projects)
@@ -231,6 +265,19 @@ export default function ProjectEditModal() {
             />
           </Form.Item>
         </Flex>
+
+        <Form.Item
+          name="idePath"
+          label="首选 IDE 路径（选填，留空使用 VS Code）"
+          style={{ marginBottom: 12 }}
+        >
+          <Input
+            placeholder="如 D:\develop_tools\IntelliJ IDEA\bin\idea64.exe"
+            addonAfter={
+              <FolderOpenOutlined onClick={() => void pickIde()} style={{ cursor: 'pointer' }} />
+            }
+          />
+        </Form.Item>
 
         <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
           <Typography.Text strong>启动任务</Typography.Text>
@@ -300,6 +347,27 @@ export default function ProjectEditModal() {
                     </Form.Item>
                     <Form.Item name={[field.name, 'url']} noStyle>
                       <Input placeholder="访问地址（选填）" style={{ width: 220 }} />
+                    </Form.Item>
+                  </Flex>
+                  <Flex gap={8} align="center" style={{ marginTop: 6, paddingBottom: 6 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+                      就绪判定
+                    </Typography.Text>
+                    <Form.Item name={[field.name, 'readyType']} noStyle>
+                      <Select
+                        size="small"
+                        allowClear
+                        placeholder="选填"
+                        style={{ width: 140 }}
+                        options={READY_OPTIONS}
+                      />
+                    </Form.Item>
+                    <Form.Item name={[field.name, 'readyValue']} noStyle>
+                      <Input
+                        size="small"
+                        placeholder="就绪值（URL / 端口号 / 进程名 / 日志关键字）"
+                        style={{ flex: 1 }}
+                      />
                     </Form.Item>
                   </Flex>
                 </div>

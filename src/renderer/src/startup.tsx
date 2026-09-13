@@ -2,7 +2,7 @@ import { Modal } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 import { RUNTIME_LABEL } from '../../shared/types'
 import type { Project, RuntimeType, ServiceDep, TaskConfig } from '../../shared/types'
-import { urlPort } from './utils'
+import { sleep, urlPort } from './utils'
 
 function versionSatisfies(type: RuntimeType, installed: string, required: string): boolean {
   if (type === 'jdk') {
@@ -165,21 +165,38 @@ export function confirmServicesDown(down: ServiceDep[]): Promise<boolean> {
 }
 
 /**
- * 就绪门禁：轮询 HTTP 探测直到就绪或超时。
- * 返回 true=就绪；false=超时未就绪。
+ * 就绪门禁：按任务的就绪判定方式轮询（HTTP / 端口 / 进程 / 日志关键字），
+ * 未配置任何判定时视为立即就绪。返回 true=就绪；false=超时未就绪。
  */
-export async function waitReady(
-  url: string,
+export async function waitTaskReady(
+  project: Project,
+  task: TaskConfig,
   timeoutMs: number,
   onTick?: (elapsedSec: number) => void
 ): Promise<boolean> {
+  const cond = task.ready ?? (task.url ? { type: 'url' as const, value: task.url } : null)
+  if (!cond) return true
   const start = Date.now()
+  const evaluate = async (): Promise<boolean> => {
+    switch (cond.type) {
+      case 'url':
+        return window.api.checkUrl(cond.value || task.url || '')
+      case 'port':
+        return (await window.api.checkPort(Number(cond.value))).occupied
+      case 'process':
+        return window.api.checkTaskProcess(project.id, task.id, cond.value || '')
+      case 'log':
+        return window.api.checkTaskLog(project.id, task.id, cond.value || '')
+      default:
+        return true
+    }
+  }
   for (;;) {
-    if (await window.api.checkUrl(url)) return true
+    if (await evaluate()) return true
     const elapsed = Date.now() - start
     if (elapsed >= timeoutMs) return false
     onTick?.(Math.round(elapsed / 1000))
-    await new Promise((r) => setTimeout(r, 1500))
+    await sleep(1500)
   }
 }
 

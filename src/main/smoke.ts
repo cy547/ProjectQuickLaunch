@@ -9,6 +9,7 @@ import { ProcessManager } from './processes'
 import { HealthMonitor } from './health'
 import { CloneManager } from './gitClone'
 import { detectProject } from './detect'
+import { taskHasProcess } from './ports'
 import { detectInstalled } from './runtimes'
 
 function report(name: string, ok: boolean, extra = ''): void {
@@ -179,11 +180,37 @@ export async function runSmokeTest(): Promise<void> {
       JSON.stringify(detTypes)
     )
 
-    // ---- 8. 运行环境版本检测（本机必有 node）----
+    // ---- 8a. 就绪判定：日志关键字 + 进程树检测 ----
+    const logTask: TaskConfig = {
+      id: 't3',
+      name: 'log-ready',
+      cwd: projDir,
+      command: `node -e "setTimeout(()=>{console.log('READY_KEYWORD');setInterval(()=>{},10000)},1200)"`
+    }
+    report('ready: start log task', pm.start(project, logTask).ok)
+    let keywordSeen = false
+    for (let i = 0; i < 16; i++) {
+      await wait(500)
+      if (pm.logsContain('p1', 't3', 'READY_KEYWORD')) {
+        keywordSeen = true
+        break
+      }
+    }
+    report('ready: log keyword detected', keywordSeen)
+    const mainPid = pm.listRunning().find((r) => r.key === 'p1:t3')?.mainPid
+    report('ready: process tree contains node', await taskHasProcess(mainPid, 'node'))
+    await pm.stop('p1', 't3')
+
+    // ---- 8b. 运行环境版本检测（本机必有 node）----
     const nodeVersion = await detectInstalled('node')
     report('runtime: detect node version', !!nodeVersion, nodeVersion ?? 'null')
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true })
+    // 子进程可能仍占用目录（taskkill 异步进行中），清理失败就留给系统临时目录
+    try {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    } catch {
+      /* 忽略 */
+    }
   }
 
   console.log('[SMOKE] done')

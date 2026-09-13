@@ -78,7 +78,12 @@ if (!isSmoke && !app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     if (isSmoke) {
-      await runSmokeTest()
+      try {
+        await runSmokeTest()
+      } catch (err) {
+        console.error('[SMOKE] crashed:', err)
+        process.exitCode = 1
+      }
       app.exit(process.exitCode === 1 ? 1 : 0)
       return
     }

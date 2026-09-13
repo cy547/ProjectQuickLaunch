@@ -17,7 +17,7 @@ import {
   confirmContinueUnready,
   confirmServicesDown,
   startTaskSmart,
-  waitReady
+  waitTaskReady
 } from '../startup'
 import type { Project, TaskConfig } from '../../../shared/types'
 import TaskCard from './TaskCard'
@@ -54,11 +54,14 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         setStartHint(`正在启动「${task.name}」…`)
         const r = await startTaskSmart(project, task)
         if (r === 'cancelled') return
-        if (task.url) {
+        if (task.url || task.ready) {
           setStartHint(`等待「${task.name}」就绪…`)
-          const ready = await waitReady(task.url, READY_TIMEOUT_MS, (s) =>
+          const ready = await waitTaskReady(project, task, READY_TIMEOUT_MS, (s) =>
             setStartHint(`等待「${task.name}」就绪… ${s}s`)
           )
+          if (ready && document.hidden) {
+            void window.api.notify(`「${task.name}」已就绪`, project.name + '：可以继续启动后续任务了')
+          }
           if (!ready) {
             setStartHint(null)
             if (!(await confirmContinueUnready(task.name, READY_TIMEOUT_MS / 1000))) return
@@ -90,7 +93,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   }
 
   const openVSCode = async (): Promise<void> => {
-    const r = await window.api.openInVSCode(project.path)
+    // 配置了首选 IDE 用 IDE，否则回退 VS Code
+    const req = project.idePath
+      ? window.api.openIde(project.path, project.idePath)
+      : window.api.openInVSCode(project.path)
+    const r = await req
     if (!r.ok && r.message) message.warning(r.message)
   }
 
@@ -162,7 +169,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                   }}
                 />
               </Tooltip>
-              <Tooltip title="用 VS Code 打开">
+              <Tooltip title={project.idePath ? `用 ${project.idePath.split(/[\\/]/).pop()} 打开` : '用 VS Code 打开'}>
                 <Button icon={<CodeOutlined />} onClick={() => void openVSCode()} />
               </Tooltip>
               <Button icon={<EditOutlined />} onClick={() => openEdit({ project })} />

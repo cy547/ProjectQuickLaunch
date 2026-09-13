@@ -184,3 +184,46 @@ Gradle Spring Boot、Go、Rust、.NET（csproj/sln）、Django、Flask/FastAPI�
 3. **检测要贴真实运行时**：JDK 检测读 JAVA_HOME 而不是 PATH 的 java，就是"程序怎么跑，
    检测就怎么判"的原则。
 4. **无界面 smoke 测试**对 GUI 应用回报极高——16 项断言在每次迭代后兜底核心链路。
+
+---
+
+## 九、迭代补记（同日晚些时候）
+
+### 9.1 运行与端口面板
+- netstat 解析 + PowerShell 进程表（Get-CimInstance，兼容 5.1 的带引号 CSV）→ 进程树聚合
+- 任务端口归因（cmd→conhost→node 全链路）、系统全量端口表、结束占用进程、10s 自动刷新
+
+### 9.2 智能启动四件套
+- 端口预检：启动前检测占用，弹窗一键结束占用进程后重启
+- 依赖服务预检：项目配置 MySQL/Redis/MQ，启动前 TCP 连通性检测
+- 就绪门禁式顺序启动：等前一个就绪再拉起下一个（60s 超时可继续）
+- 快捷命令：npm install / git pull 等一次性任务按钮化
+
+### 9.3 启动前预检
+- 版本比对：读 pom 的 java.version / engines.node，与本机 JAVA_HOME / node -v 比对
+- 配置检查：.env.example 存在但缺 .env 时提示
+- 发现问题弹窗列出，仍要启动/取消
+
+### 9.4 识别器扩充到 11 种 + 递归扫描
+- 新增 Gradle Boot / Go / Rust / .NET / Flask·FastAPI / Docker Compose
+- 子目录递归下钻 3 层（解决 minhr 套壳目录场景），跳过噪音目录
+
+### 9.5 就绪判定多样化 + 桌面通知 + 首选 IDE（借鉴竞品）
+- 就绪判定四种：URL / 端口 / 子进程名 / 日志关键字（任务级配置）
+- 任务异常退出弹系统通知（点击打开窗口）；就绪且窗口隐藏时通知
+- 项目可配置首选 IDE 路径（IDEA 等），详情页按钮按项目打开
+
+### 9.6 新手教程
+- 首次启动自动弹出分步引导 + FAQ（沉淀 git 代理/端口占用/中间件/JDK 等真实踩坑）
+- 侧栏「新手教程」随时回看；settings.onboarded 持久化
+
+### 9.7 smoke 假死修复
+- 现象：smoke 卡住不退出（CPU 空闲）。根因：finally 里 rmSync 删除临时目录时
+  EBUSY（node 子进程 cwd 仍在其内，taskkill 异步未完成），异常逃逸导致
+  app.exit 永不执行。修复：rmSync try/catch best-effort + main 侧捕获 runSmokeTest
+  异常后强制 exit。
+
+### 9.8 竞品分析
+- 见 CHAT 记录：CodeDeck（23⭐，概念最接近：Git 工作台/Launch Sets/模板/Todos）、
+  Runbox project-launcher（就绪判定四方式/资源监控/CLI 伴随）、FlyEnv·Laragon·EServer（服务管理赛道）
+- 明确不抄：本地域名+HTTPS、服务多版本矩阵（另一条赛道）；Git 工作台留作 P2

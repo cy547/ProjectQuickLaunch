@@ -76,6 +76,16 @@ export interface RendererApi {
   getTaskRequirements(projectId: string, taskId: string): Promise<RuntimeRequirement[]>
   /** 检测本机已装的运行环境版本 */
   getRuntimeVersions(types: RuntimeType[]): Promise<Partial<Record<RuntimeType, string | null>>>
+  /** 任务进程树中是否存在名字匹配的进程（就绪判定用） */
+  checkTaskProcess(projectId: string, taskId: string, name: string): Promise<boolean>
+  /** 任务日志中是否出现关键字（就绪判定用） */
+  checkTaskLog(projectId: string, taskId: string, keyword: string): Promise<boolean>
+  /** 选择可执行文件（IDE 路径等） */
+  selectFile(title?: string): Promise<string | null>
+  /** 用项目首选 IDE 打开目录（未配置时回退 VS Code） */
+  openIde(dir: string, idePath?: string): Promise<OpResult>
+  /** 系统通知（点击会打开主窗口） */
+  notify(title: string, body: string): Promise<void>
   /** 在系统终端（Windows Terminal/PowerShell）中打开指定目录 */
   openTerminal(dir: string): Promise<OpResult>
   /** 启动统计（按任务聚合） */

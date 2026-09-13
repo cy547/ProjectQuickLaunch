@@ -187,6 +187,13 @@ export class ProcessManager extends EventEmitter {
     return this.lastLogFiles.get(taskKey(projectId, taskId)) ?? null
   }
 
+  /** 任务日志中是否出现关键字（大小写不敏感；仅运行中的任务，就绪判定用） */
+  logsContain(projectId: string, taskId: string, keyword: string): boolean {
+    const entry = this.running.get(taskKey(projectId, taskId))
+    if (!entry || !keyword) return false
+    return entry.logs.join('').toLowerCase().includes(keyword.toLowerCase())
+  }
+
   /** 当前所有运行中任务的引用（供端口快照使用） */
   listRunning(): Array<{ key: string; projectId: string; taskId: string; mainPid?: number }> {
     const out: Array<{ key: string; projectId: string; taskId: string; mainPid?: number }> = []

@@ -1,19 +1,84 @@
 import { Modal } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
-import type { Project, ServiceDep, TaskConfig } from '../../shared/types'
+import { RUNTIME_LABEL } from '../../shared/types'
+import type { Project, RuntimeType, ServiceDep, TaskConfig } from '../../shared/types'
 import { urlPort } from './utils'
+
+function versionSatisfies(type: RuntimeType, installed: string, required: string): boolean {
+  if (type === 'jdk') {
+    const major = (v: string): number => {
+      const n = Number(v.split('.')[0])
+      return n === 1 ? 8 : n
+    }
+    return major(installed) === Number(required)
+  }
+  return installed.startsWith(required)
+}
+
+/**
+ * 启动前预检：运行环境版本比对（pom 的 java.version / engines.node 等）+ 配置文件检查。
+ * 发现问题弹窗列出（仍要启动/取消）；预检自身出错不阻塞启动。
+ */
+export async function preflightTask(project: Project, task: TaskConfig): Promise<boolean> {
+  try {
+    const problems: string[] = []
+    const reqs = await window.api.getTaskRequirements(project.id, task.id)
+    if (reqs.length > 0) {
+      const versions = await window.api.getRuntimeVersions([...new Set(reqs.map((r) => r.type))])
+      for (const r of reqs) {
+        const installed = versions[r.type]
+        const label = RUNTIME_LABEL[r.type]
+        if (!installed) {
+          problems.push(`未安装 ${label}${r.version ? `（项目需要 ${r.version}）` : ''} —— ${r.reason}`)
+        } else if (r.version && !versionSatisfies(r.type, installed, r.version)) {
+          problems.push(`${label} 版本不匹配：本机 ${installed}，项目需要 ${r.version} —— ${r.reason}`)
+        }
+      }
+    }
+    const env = await window.api.checkEnvFiles(task.cwd?.trim() || project.path)
+    if (env.envMissing) {
+      problems.push(
+        '检测到 .env.example 但没有 .env —— 配置文件可能还没创建（复制 example 并填写后再启动）'
+      )
+    }
+    if (problems.length === 0) return true
+    return await new Promise<boolean>((resolve) => {
+      Modal.confirm({
+        title: '启动前检查发现问题',
+        icon: <ExclamationCircleOutlined />,
+        content: (
+          <div>
+            {problems.map((p, i) => (
+              <p key={i} style={{ margin: '4px 0' }}>
+                • {p}
+              </p>
+            ))}
+          </div>
+        ),
+        okText: '仍要启动',
+        cancelText: '取消',
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      })
+    })
+  } catch {
+    return true // 预检本身出错不阻塞启动
+  }
+}
 
 export type SmartStartResult = 'started' | 'cancelled'
 
 /**
  * 智能启动单个任务：
- * 1. 配置了访问地址的，先做端口预检——被占用时弹窗让用户选择「结束占用进程并启动 / 仍要启动 / 取消」
- * 2. 通过后调用 taskStart
+ * 1. 启动前预检——运行环境版本比对 + 配置文件检查，发现问题弹窗确认
+ * 2. 配置了访问地址的，先做端口预检——被占用时弹窗让用户选择「结束占用进程并启动 / 取消」
+ * 3. 通过后调用 taskStart
  */
 export async function startTaskSmart(
   project: Project,
   task: TaskConfig
 ): Promise<SmartStartResult> {
+  if (!(await preflightTask(project, task))) return 'cancelled'
   const port = urlPort(task.url)
   if (port) {
     const check = await window.api.checkPort(port)

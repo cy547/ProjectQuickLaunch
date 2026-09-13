@@ -12,6 +12,17 @@ function dedupeRequirements(reqs: RuntimeRequirement[]): RuntimeRequirement[] {
   return [...byType.values()]
 }
 
+/** 启动前配置检查：有 .env.example 却没有 .env 时提示用户创建配置 */
+export function checkEnvFiles(dir: string): { envMissing: boolean } {
+  try {
+    const hasExample = fs.existsSync(path.join(dir, '.env.example'))
+    const hasEnv = fs.existsSync(path.join(dir, '.env'))
+    return { envMissing: hasExample && !hasEnv }
+  } catch {
+    return { envMissing: false }
+  }
+}
+
 /**
  * 深度识别项目：根目录特征 + 一级子目录扫描合并。
  * 产出可启动任务建议与运行环境需求（含版本要求）。

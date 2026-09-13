@@ -3,6 +3,7 @@ import { IPC } from '../shared/types'
 import type {
   CloneProgressPayload,
   RuntimeProgressPayload,
+  RuntimeType,
   TaskOutputPayload,
   TaskStatusPayload,
   UrlHealthPayload
@@ -42,6 +43,11 @@ const api: RendererApi = {
   checkPort: (port: number) => ipcRenderer.invoke(IPC.CheckPort, port),
   checkService: (host: string, port: number) => ipcRenderer.invoke(IPC.CheckService, host, port),
   checkUrl: (url: string) => ipcRenderer.invoke(IPC.CheckUrl, url),
+  checkEnvFiles: (dir: string) => ipcRenderer.invoke(IPC.CheckEnvFiles, dir),
+  getTaskRequirements: (projectId: string, taskId: string) =>
+    ipcRenderer.invoke(IPC.GetTaskRequirements, projectId, taskId),
+  getRuntimeVersions: (types: RuntimeType[]) =>
+    ipcRenderer.invoke(IPC.GetRuntimeVersions, types),
 
   openExternal: (url) => ipcRenderer.invoke(IPC.OpenExternal, url),
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),

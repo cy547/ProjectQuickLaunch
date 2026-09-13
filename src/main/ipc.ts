@@ -15,13 +15,15 @@ import { processManager } from './processes'
 import { healthMonitor } from './health'
 import { cloneManager } from './gitClone'
 import { scanSubProjects } from './scan'
-import { detectProject } from './detect'
+import { checkEnvFiles, detectProject } from './detect'
+import { requirementsForSuggestion } from './scan'
 import { detectSystemProxy } from './proxy'
 import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree } from './ports'
 import { probeUrl } from './health'
 import {
   buildEnvForManaged,
   checkRuntimes,
+  detectInstalled,
   installRuntime
 } from './runtimes'
 import type { PackageJsonInfo } from '../shared/api'
@@ -212,6 +214,30 @@ export function registerIpc(win: BrowserWindow): void {
   )
 
   ipcMain.handle(IPC.CheckUrl, (_e, url: string) => probeUrl(String(url)))
+
+  ipcMain.handle(IPC.CheckEnvFiles, (_e, dir: string) => checkEnvFiles(String(dir)))
+
+  // 某个任务需要的运行环境需求（含版本），供启动前预检使用
+  ipcMain.handle(IPC.GetTaskRequirements, (_e, projectId: string, taskId: string) => {
+    const config = loadConfig()
+    const project = config.projects.find((p) => p.id === projectId)
+    const task = project?.tasks.find((t) => t.id === taskId)
+    if (!project || !task) return []
+    return requirementsForSuggestion({
+      name: task.name,
+      command: task.command,
+      cwd: task.cwd?.trim() || project.path
+    })
+  })
+
+  // 检测本机已装的运行环境版本
+  ipcMain.handle(IPC.GetRuntimeVersions, async (_e, types: RuntimeType[]) => {
+    const out: Partial<Record<RuntimeType, string | null>> = {}
+    for (const type of types ?? []) {
+      out[type] = await detectInstalled(type)
+    }
+    return out
+  })
 
   ipcMain.handle(IPC.CloneCancel, () => {
     cloneManager.cancel()

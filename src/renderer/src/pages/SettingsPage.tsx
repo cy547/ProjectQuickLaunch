@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [dir, setDir] = useState(settings.defaultCloneDir)
   const [proxy, setProxy] = useState(settings.cloneProxy ?? '')
   const [runtimesDir, setRuntimesDir] = useState(settings.runtimesDir ?? '')
+  const [dockerMirror, setDockerMirror] = useState(settings.dockerMirror ?? '')
   const [version, setVersion] = useState('')
   const [updaterMessage, setUpdaterMessage] = useState('')
   const [updaterBusy, setUpdaterBusy] = useState(false)
@@ -79,7 +80,8 @@ export default function SettingsPage() {
       ...settings,
       defaultCloneDir: dir,
       cloneProxy: proxy.trim(),
-      runtimesDir: runtimesDir.trim()
+      runtimesDir: runtimesDir.trim(),
+      dockerMirror: dockerMirror.trim()
     })
     setSettings(saved)
     message.success('设置已保存')
@@ -122,6 +124,16 @@ export default function SettingsPage() {
           value={proxy}
           onChange={(e) => setProxy(e.target.value)}
           placeholder="留空 = 自动检测系统代理"
+          style={{ maxWidth: 480 }}
+        />
+
+        <Typography.Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 8 }}>
+          Docker 镜像加速：依赖服务 Docker 部署时拉取镜像的前缀，如 docker.m.daocloud.io/（留空直连 Docker Hub）
+        </Typography.Paragraph>
+        <Input
+          value={dockerMirror}
+          onChange={(e) => setDockerMirror(e.target.value)}
+          placeholder="留空 = 直连 Docker Hub"
           style={{ maxWidth: 480 }}
         />
       </Card>

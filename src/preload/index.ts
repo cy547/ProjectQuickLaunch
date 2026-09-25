@@ -60,6 +60,9 @@ const api: RendererApi = {
   updaterInstall: () => ipcRenderer.invoke(IPC.UpdaterInstall),
   appVersion: () => ipcRenderer.invoke(IPC.AppVersion),
   onUpdaterEvent: (cb: (p: UpdaterEvent) => void) => subscribe<UpdaterEvent>(IPC.EventUpdater, cb),
+  dockerAvailable: () => ipcRenderer.invoke(IPC.DockerAvailable),
+  dockerDeploy: (dep: { name: string; host: string; port: number; dockerImage?: string }) =>
+    ipcRenderer.invoke(IPC.DockerDeploy, dep),
 
   openExternal: (url) => ipcRenderer.invoke(IPC.OpenExternal, url),
   openPath: (p) => ipcRenderer.invoke(IPC.OpenPath, p),

@@ -15,7 +15,7 @@ import { newId, sleep } from '../utils'
 import {
   checkProjectServices,
   confirmContinueUnready,
-  confirmServicesDown,
+  resolveServicesDown,
   startTaskSmart,
   waitTaskReady
 } from '../startup'
@@ -48,7 +48,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     setStarting(true)
     try {
       const down = await checkProjectServices(project)
-      if (down.length > 0 && !(await confirmServicesDown(down))) return
+      if (down.length > 0) {
+        const resolution = await resolveServicesDown(down)
+        if (!resolution.proceed) return
+      }
 
       for (const task of project.tasks) {
         setStartHint(`正在启动「${task.name}」…`)

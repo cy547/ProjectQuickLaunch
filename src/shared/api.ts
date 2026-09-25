@@ -95,6 +95,10 @@ export interface RendererApi {
   appVersion(): Promise<string>
   /** 更新器状态事件 */
   onUpdaterEvent(cb: (p: UpdaterEvent) => void): () => void
+  /** Docker 是否可用（守护进程运行中） */
+  dockerAvailable(): Promise<boolean>
+  /** 用 Docker 一键部署依赖服务（常见中间件自动识别镜像） */
+  dockerDeploy(dep: { name: string; host: string; port: number; dockerImage?: string }): Promise<OpResult>
   /** 在系统终端（Windows Terminal/PowerShell）中打开指定目录 */
   openTerminal(dir: string): Promise<OpResult>
   /** 启动统计（按任务聚合） */

@@ -24,6 +24,7 @@ interface ServiceFormValue {
   name: string
   host: string
   port?: number
+  dockerImage?: string
 }
 
 interface FormValues {
@@ -78,7 +79,7 @@ export default function ProjectEditModal() {
         [],
       quickCommands:
         p?.quickCommands?.map((q) => ({ name: q.name, command: q.command, cwd: q.cwd })) ?? [],
-      services: p?.services?.map((s) => ({ name: s.name, host: s.host, port: s.port })) ?? []
+      services: p?.services?.map((s) => ({ name: s.name, host: s.host, port: s.port, dockerImage: s.dockerImage })) ?? []
     })
   }, [
     editModal.open,
@@ -215,7 +216,8 @@ export default function ProjectEditModal() {
             id: editing?.services?.[i]?.id ?? newId(),
             name: s.name.trim(),
             host: s.host?.trim() || '127.0.0.1',
-            port: Number(s.port)
+            port: Number(s.port),
+            ...(s.dockerImage?.trim() ? { dockerImage: s.dockerImage.trim() } : {})
           })),
         ...(values.idePath?.trim() ? { idePath: values.idePath.trim() } : {})
       }
@@ -460,6 +462,9 @@ export default function ProjectEditModal() {
                     noStyle
                   >
                     <InputNumber placeholder="端口" min={1} max={65535} style={{ width: 110 }} />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'dockerImage']} noStyle>
+                    <Input placeholder="Docker 镜像（选填，常见服务自动识别）" style={{ width: 250 }} />
                   </Form.Item>
                   <Button
                     type="text"

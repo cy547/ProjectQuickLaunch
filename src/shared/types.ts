@@ -42,6 +42,8 @@ export interface ServiceDep {
   name: string
   host: string
   port: number
+  /** 可选：Docker 镜像（如 mysql:8.0）；常见服务留空可按名称/端口自动识别 */
+  dockerImage?: string
 }
 
 /** 应用设置 */
@@ -58,6 +60,8 @@ export interface Settings {
   onboarded?: boolean
   /** 运行环境安装目录（空 = %APPDATA%/ProjectQuickLaunch/runtimes） */
   runtimesDir?: string
+  /** Docker 镜像加速前缀（如 docker.m.daocloud.io/，留空直连 Docker Hub） */
+  dockerMirror?: string
 }
 
 /** 单个任务的启动统计 */
@@ -227,6 +231,8 @@ export const IPC = {
   UpdaterInstall: 'updater:install',
   AppVersion: 'app:version',
   EventUpdater: 'event:updater',
+  DockerAvailable: 'docker:available',
+  DockerDeploy: 'docker:deploy',
   TaskStart: 'task:start',
   TaskStop: 'task:stop',
   TaskLogs: 'task:logs',

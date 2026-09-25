@@ -18,6 +18,7 @@ import { scanSubProjects, requirementsForSuggestion } from './scan'
 import { checkEnvFiles, detectProject } from './detect'
 import { detectSystemProxy } from './proxy'
 import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree, taskHasProcess } from './ports'
+import { deployService, dockerAvailable } from './dockerOps'
 import { probeUrl } from './health'
 import { getAllStats } from './stats'
 import { managedEnvForTasks } from './projectOps'
@@ -398,4 +399,15 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle(IPC.UpdaterCheck, () => checkForUpdatesNow(() => win))
   ipcMain.handle(IPC.UpdaterInstall, () => installDownloadedUpdate())
   ipcMain.handle(IPC.AppVersion, () => app.getVersion())
+
+  ipcMain.handle(IPC.DockerAvailable, () => dockerAvailable())
+  ipcMain.handle(IPC.DockerDeploy, (_e, dep: { name: string; host: string; port: number; dockerImage?: string }) =>
+    deployService({
+      id: 'ipc',
+      name: String(dep?.name ?? ''),
+      host: String(dep?.host ?? '127.0.0.1'),
+      port: Number(dep?.port),
+      ...(dep?.dockerImage ? { dockerImage: String(dep.dockerImage) } : {})
+    })
+  )
 }

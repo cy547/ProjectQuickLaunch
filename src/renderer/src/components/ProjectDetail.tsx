@@ -13,7 +13,8 @@ import {
 import { useAppStore } from '../store'
 import { newId, sleep } from '../utils'
 import {
-  checkProjectServices,
+  allProjectServices,
+  checkServiceList,
   confirmContinueUnready,
   resolveServicesDown,
   startTaskSmart,
@@ -47,7 +48,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     if (starting) return
     setStarting(true)
     try {
-      const down = await checkProjectServices(project)
+      // 依赖服务 = 手动配置 + 从配置文件自动检测（application.yml 等）
+      const allServices = await allProjectServices(project)
+      const down = await checkServiceList(allServices)
       if (down.length > 0) {
         const resolution = await resolveServicesDown(down)
         if (!resolution.proceed) return

@@ -3,6 +3,7 @@ import type {
   OpResult,
   PortSnapshot,
   Project,
+  ServiceDep,
   Settings,
   SubProjectSuggestion,
   DetectionResult,
@@ -73,6 +74,8 @@ export interface RendererApi {
   checkUrl(url: string): Promise<boolean>
   /** 启动前配置检查：有 .env.example 却没有 .env */
   checkEnvFiles(dir: string): Promise<{ envMissing: boolean }>
+  /** 从项目配置文件检测所需中间件服务（MySQL/Redis/MQ 等） */
+  detectServices(dir: string): Promise<ServiceDep[]>
   /** 任务所需的运行环境需求（含版本要求） */
   getTaskRequirements(projectId: string, taskId: string): Promise<RuntimeRequirement[]>
   /** 检测本机已装的运行环境版本 */

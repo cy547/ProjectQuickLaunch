@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { detectSingleDir, requirementsForSuggestion, scanSubProjects } from './scan'
+import { detectServices } from './serviceDetect'
 import type { DetectionResult, RuntimeRequirement, RuntimeType, SubProjectSuggestion } from '../shared/types'
 
 function dedupeRequirements(reqs: RuntimeRequirement[]): RuntimeRequirement[] {
@@ -81,5 +82,6 @@ export function detectProject(root: string): DetectionResult {
   }
 
   const requirements1 = dedupeRequirements(requirements)
-  return { tasks, requirements: requirements1, summary: summaryOf() }
+  const services = detectServices(root)
+  return { tasks, requirements: requirements1, services, summary: summaryOf() }
 }

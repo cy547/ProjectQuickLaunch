@@ -79,7 +79,10 @@ export default function ProjectEditModal() {
         [],
       quickCommands:
         p?.quickCommands?.map((q) => ({ name: q.name, command: q.command, cwd: q.cwd })) ?? [],
-      services: p?.services?.map((s) => ({ name: s.name, host: s.host, port: s.port, dockerImage: s.dockerImage })) ?? []
+      services:
+        p?.services?.map((s) => ({ name: s.name, host: s.host, port: s.port, dockerImage: s.dockerImage })) ??
+        editModal.presetServices?.map((s) => ({ name: s.name, host: s.host, port: s.port })) ??
+        []
     })
   }, [
     editModal.open,

@@ -137,6 +137,34 @@ export async function checkProjectServices(project: Project): Promise<ServiceDep
   return down
 }
 
+/** 依赖服务连通性检测（列表版） */
+export async function checkServiceList(deps: ServiceDep[]): Promise<ServiceDep[]> {
+  const down: ServiceDep[] = []
+  for (const s of deps) {
+    if (!(await window.api.checkService(s.host || '127.0.0.1', s.port))) down.push(s)
+  }
+  return down
+}
+
+/**
+ * 项目依赖服务总清单 = 手动配置 + 从配置文件自动检测（application.yml 等）。
+ * 自动检测的服务标记"（自动检测）"，按端口去重。
+ */
+export async function allProjectServices(project: Project): Promise<ServiceDep[]> {
+  const configured = project.services ?? []
+  const seen = new Set(configured.map((s) => s.port))
+  let detected: ServiceDep[] = []
+  try {
+    detected = (await window.api.detectServices(project.path)) ?? []
+  } catch {
+    /* 检测失败不影响启动 */
+  }
+  const extra = detected
+    .filter((s) => !seen.has(s.port))
+    .map((s) => ({ ...s, name: `${s.name}（自动检测）` }))
+  return [...configured, ...extra]
+}
+
 /** 与主进程 dockerOps.planImageFor 对应的"可自动部署"判断 */
 function dockerPlanKnown(name: string, port: number): boolean {
   const n = name.toLowerCase()

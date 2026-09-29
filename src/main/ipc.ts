@@ -16,6 +16,7 @@ import { healthMonitor } from './health'
 import { cloneManager } from './gitClone'
 import { scanSubProjects, requirementsForSuggestion } from './scan'
 import { checkEnvFiles, detectProject } from './detect'
+import { detectServices } from './serviceDetect'
 import { detectSystemProxy } from './proxy'
 import { checkPortFree, checkServiceTcp, collectPortSnapshot, killProcessTree, taskHasProcess } from './ports'
 import { deployService, dockerAvailable } from './dockerOps'
@@ -235,6 +236,8 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle(IPC.CheckUrl, (_e, url: string) => probeUrl(String(url)))
 
   ipcMain.handle(IPC.CheckEnvFiles, (_e, dir: string) => checkEnvFiles(String(dir)))
+
+  ipcMain.handle(IPC.DetectServices, (_e, dir: string) => detectServices(String(dir)))
 
   // 某个任务需要的运行环境需求（含版本），供启动前预检使用
   ipcMain.handle(IPC.GetTaskRequirements, (_e, projectId: string, taskId: string) => {

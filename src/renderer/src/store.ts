@@ -25,6 +25,7 @@ export interface EditModalState {
   presetName?: string
   presetPath?: string
   presetTasks?: Array<{ name: string; command: string; cwd?: string; url?: string }>
+  presetServices?: Array<{ name: string; host: string; port: number }>
 }
 
 interface TaskRuntime {

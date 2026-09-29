@@ -218,6 +218,7 @@ export const IPC = {
   CheckService: 'net:check-service',
   CheckUrl: 'net:check-url',
   CheckEnvFiles: 'fs:check-env-files',
+  DetectServices: 'project:detect-services',
   GetTaskRequirements: 'project:task-requirements',
   GetRuntimeVersions: 'runtime:versions',
   OpenTerminal: 'app:open-terminal',
@@ -300,6 +301,8 @@ export interface SubProjectSuggestion {
 export interface DetectionResult {
   tasks: SubProjectSuggestion[]
   requirements: RuntimeRequirement[]
+  /** 从配置文件自动检测出的依赖服务（MySQL/Redis/MQ 等） */
+  services?: ServiceDep[]
   /** 一句话总结（如：识别到 2 个任务，需要 Node.js、JDK 17） */
   summary: string
 }

@@ -48,6 +48,7 @@ export default function ImportPage() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [workingText, setWorkingText] = useState('')
   const [detection, setDetection] = useState<DetectionResult | null>(null)
+  const [detectedServices, setDetectedServices] = useState<DetectionResult['services']>([])
   const [checks, setChecks] = useState<RuntimeCheckResult[]>([])
   const [installPlan, setInstallPlan] = useState<Set<RuntimeType>>(new Set())
   const [installing, setInstalling] = useState<RuntimeType | null>(null)
@@ -80,6 +81,7 @@ export default function ImportPage() {
     setWorkingText('正在识别项目结构与运行环境需求…')
     const result = await window.api.detectProject(dir)
     setDetection(result)
+    setDetectedServices(result.services ?? [])
     if (result.tasks.length === 0) {
       setPhase('idle')
       message.warning(result.summary)
@@ -150,7 +152,8 @@ export default function ImportPage() {
     openEdit({
       presetName: targetDirAndSource.split(/[\\/]/).pop(),
       presetPath: targetDirAndSource,
-      presetTasks: detection.tasks
+      presetTasks: detection.tasks,
+      presetServices: (detectedServices ?? []) as Array<{ name: string; host: string; port: number }>
     })
     message.success('已生成启动配置，请确认后保存')
     reset()

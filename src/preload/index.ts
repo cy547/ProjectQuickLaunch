@@ -45,6 +45,7 @@ const api: RendererApi = {
   checkService: (host: string, port: number) => ipcRenderer.invoke(IPC.CheckService, host, port),
   checkUrl: (url: string) => ipcRenderer.invoke(IPC.CheckUrl, url),
   checkEnvFiles: (dir: string) => ipcRenderer.invoke(IPC.CheckEnvFiles, dir),
+  detectServices: (dir: string) => ipcRenderer.invoke(IPC.DetectServices, dir),
   getTaskRequirements: (projectId: string, taskId: string) =>
     ipcRenderer.invoke(IPC.GetTaskRequirements, projectId, taskId),
   getRuntimeVersions: (types: RuntimeType[]) =>

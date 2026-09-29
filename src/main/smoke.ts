@@ -9,6 +9,7 @@ import { ProcessManager } from './processes'
 import { HealthMonitor } from './health'
 import { CloneManager } from './gitClone'
 import { detectProject } from './detect'
+import { detectServices } from './serviceDetect'
 import { taskHasProcess } from './ports'
 import { detectInstalled } from './runtimes'
 
@@ -201,7 +202,30 @@ export async function runSmokeTest(): Promise<void> {
     report('ready: process tree contains node', await taskHasProcess(mainPid, 'node'))
     await pm.stop('p1', 't3')
 
-    // ---- 8b. 运行环境版本检测（本机必有 node）----
+    // ---- 8b1. 依赖服务自动检测（application.yml → MySQL/Redis）----
+    const svcDir = path.join(detDir, 'spring-svc')
+    fs.mkdirSync(path.join(svcDir, 'src', 'main', 'resources'), { recursive: true })
+    fs.writeFileSync(
+      path.join(svcDir, 'src', 'main', 'resources', 'application.yml'),
+      [
+        'spring:',
+        '  datasource:',
+        '    url: jdbc:mysql://localhost:3306/sky_db?useSSL=false',
+        '  data:',
+        '    redis:',
+        '      host: localhost',
+        '      port: 6379'
+      ].join('\n')
+    )
+    const svcs = detectServices(svcDir)
+    const svcPorts = svcs.map((s) => s.port).sort((a, b) => a - b)
+    report(
+      'detect: services from application.yml',
+      JSON.stringify(svcPorts) === JSON.stringify([3306, 6379]),
+      JSON.stringify(svcs.map((s) => `${s.name}:${s.port}`))
+    )
+
+    // ---- 8c. 运行环境版本检测（本机必有 node）----
     const nodeVersion = await detectInstalled('node')
     report('runtime: detect node version', !!nodeVersion, nodeVersion ?? 'null')
   } finally {
